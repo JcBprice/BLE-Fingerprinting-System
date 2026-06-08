@@ -1,0 +1,8 @@
+{
+  "_note": "Kalibracja SVG. Rysunek architektoniczny w skali 1:100 — 100 SVG units = 1 metr rzeczywisty.",
+  "_svg_info": "SVG width=437.35cm to rozmiar strony (papier A0+). viewBox=4373x2617 jednostek.",
+  "_building": "Budynek: ~43.7m x ~26.2m. Pokój 707 ok. 29m od lewego narożnika.",
+  "origin_x_svg": 0.0,
+  "origin_y_svg": 0.0,
+  "scale": 100.0
+}
