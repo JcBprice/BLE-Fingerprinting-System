@@ -23,14 +23,22 @@ Wykresy:
     Scatter plot: prawdziwe vs estymowane pozycje — data/validation_scatter.png
 """
 
+import os as _os
+_os.environ.setdefault("QT_LOGGING_RULES", "qt.*=false")
+
 import json
 import math
 import os
+import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR   = os.path.normpath(os.path.join(SCRIPT_DIR, '..', 'data'))
 sys.path.insert(0, SCRIPT_DIR)
+
+# Wymuszamy backend Agg (bez Qt/Wayland)
+import matplotlib
+matplotlib.use('Agg')
 
 from wknn import load_radio_map, wknn_estimate, DISTANCE_METRIC
 
@@ -116,6 +124,23 @@ def compute_stats(errors: list) -> dict:
 # Wizualizacja
 # ══════════════════════════════════════════════════════════════════════════
 
+def _show_plot(fig, out_path: str) -> None:
+    """Zapisuje wykres, zamyka figurę i otwiera PNG w systemowej przeglądarce."""
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    import matplotlib.pyplot as plt
+    plt.close(fig)
+    try:
+        env = dict(os.environ)
+        env["QT_LOGGING_RULES"] = "qt.*=false"
+        subprocess.Popen(['xdg-open', out_path],
+                         stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL,
+                         start_new_session=True,
+                         env=env)
+    except Exception:
+        pass
+
 def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
     """Generuje wykres CDF i zapisuje do pliku. Zwraca ścieżkę."""
     try:
@@ -162,9 +187,7 @@ def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'validation_cdf.png')
-    fig.savefig(out_path, dpi=150)
-    plt.show()
-    plt.close(fig)
+    _show_plot(fig, out_path)
     return out_path
 
 
@@ -210,9 +233,7 @@ def _plot_scatter(results: list, stats: dict) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'validation_scatter.png')
-    fig.savefig(out_path, dpi=150)
-    plt.show()
-    plt.close(fig)
+    _show_plot(fig, out_path)
     return out_path
 
 
@@ -277,9 +298,7 @@ def _plot_k_optimization(k_values: list, k_stats: dict, best_k: int) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'k_optimization.png')
-    fig.savefig(out_path, dpi=150)
-    plt.show()
-    plt.close(fig)
+    _show_plot(fig, out_path)
     return out_path
 
 

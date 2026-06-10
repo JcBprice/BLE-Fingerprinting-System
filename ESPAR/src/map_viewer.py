@@ -21,6 +21,7 @@ Kalibracja układu współrzędnych:
 import sys
 import os
 import math
+import socket
 import threading
 import time
 import json
@@ -28,7 +29,7 @@ import json
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel,
     QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy,
-    QPushButton, QStatusBar,
+    QPushButton, QStatusBar, QCheckBox,
 )
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import (
@@ -36,7 +37,7 @@ from PyQt6.QtCore import (
 )
 from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QFont, QRadialGradient,
-    QPixmap, QPalette, QFontDatabase, QLinearGradient,
+    QPixmap, QPalette, QFontDatabase, QLinearGradient, QPolygonF,
 )
 
 # ── Ścieżki ──────────────────────────────────────────────────────────────────
@@ -44,6 +45,16 @@ SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR   = os.path.normpath(os.path.join(SCRIPT_DIR, '..', 'data'))
 _CALIB_PATH = os.path.join(_DATA_DIR, 'svg_calibration.json')
 SVG_PATH    = os.path.join(SCRIPT_DIR, '..', '..', 'SVG_parser', 'mapaAK_sieciowe_v3.svg')
+
+# Dostęp do modułów sąsiednich (telnet_reader, wknn, validate)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+# ── Połączenie z serwerem ESPAR (dla trybu live) ─────────────────────────────────
+ESPAR_HOST  = '153.19.49.102'
+ESPAR_PORT  = 8893
+ESPAR_TIMEOUT = 10
+VALID_CHARS = {31, 62, 124, 248, 496, 992, 1984, 3968, 3841, 3587, 3079, 2063}
 
 # ── Kalibracja układu współrzędnych ──────────────────────────────────────────
 # SVG pochodzi z Inkscape. Rysunek architektoniczny w skali 1:100:
@@ -163,6 +174,8 @@ class MapCanvas(QWidget):
         self._bg_pix:   QPixmap | None = None
         self._bg_rect:  QRectF  | None = None
 
+        self._show_fingerprints: bool = True
+
     # ── Public API ───────────────────────────────────────────────────────────
     def update_position(self, x_m: float, y_m: float,
                         beacon_id=None, confidence: float = 1.0):
@@ -233,6 +246,12 @@ class MapCanvas(QWidget):
         self.update()
 
     def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.RightButton:
+            self._drag_start  = e.position()
+            self._pan_at_drag = QPointF(self._pan)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            return
+
         if e.button() == Qt.MouseButton.LeftButton:
             wx = float(e.position().x())
             wy = float(e.position().y())
@@ -306,9 +325,15 @@ class MapCanvas(QWidget):
             self._bg_pix = None
             self.update()
 
-    def mouseReleaseEvent(self, _):
-        self._drag_start = None
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
+    def mouseReleaseEvent(self, e):
+        if e.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton):
+            self._drag_start = None
+            if self._pick_mode or self._mark_origin_mode:
+                self.setCursor(Qt.CursorShape.CrossCursor)
+            elif self._select_mode:
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                self.setCursor(Qt.CursorShape.OpenHandCursor)
 
     def resizeEvent(self, _):
         self._bg_pix = None   # invalidate on resize
@@ -350,7 +375,7 @@ class MapCanvas(QWidget):
             p.drawPixmap(int(r.x()), int(r.y()), self._bg_pix)
 
         # Rysuj istniejące punkty kalibracyjne (niebieskie lub zielone jeśli wybrane)
-        if self._existing_points:
+        if self._show_fingerprints and self._existing_points:
             p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
             for pt in self._existing_points:
                 x_m, y_m = pt.get('x_m'), pt.get('y_m')
@@ -582,6 +607,46 @@ class InfoPanel(QFrame):
         self._btn_clear = self._btn('Wyczyść ślad')
         lay.addWidget(self._btn_clear)
 
+        # Section: Options (checkboxes)
+        lay.addSpacing(14)
+        lay.addWidget(self._divider())
+        lay.addSpacing(12)
+        lay.addWidget(self._section_label('OPCJE'))
+        lay.addSpacing(6)
+
+        chk_style = f"""
+            QCheckBox {{
+                color: {C_TEXT.name()};
+                font-size: 11px;
+                spacing: 6px;
+                background: transparent;
+                border: none;
+            }}
+            QCheckBox::indicator {{
+                width: 16px; height: 16px;
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 3px;
+                background: {C_PANEL2.name()};
+            }}
+            QCheckBox::indicator:checked {{
+                background: {C_ACCENT.name()};
+                border-color: {C_ACCENT.name()};
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {C_ACCENT.name()};
+            }}
+        """
+
+        self._chk_beacons = QCheckBox('Pokaż odciski radiowe')
+        self._chk_beacons.setChecked(True)
+        self._chk_beacons.setStyleSheet(chk_style)
+        lay.addWidget(self._chk_beacons)
+        lay.addSpacing(4)
+
+        self._chk_live = QCheckBox('Pozycja na żywo')
+        self._chk_live.setStyleSheet(chk_style)
+        lay.addWidget(self._chk_live)
+
     # ── helpers ──────────────────────────────────────────────────────────────
     def _divider(self):
         d = QFrame()
@@ -720,6 +785,19 @@ class MapWindow(QMainWindow):
         self._panel._btn_fit.clicked.connect(self._canvas.fit_view)
         self._panel._btn_clear.clicked.connect(self._canvas.clear_trail)
 
+        # Status bar (must be created before select_mode branch uses it)
+        self._sb = QStatusBar()
+        self._sb.setStyleSheet(
+            f'background: {C_PANEL.name()}; color: {C_MUTED.name()};'
+            f'border-top: 1px solid {C_BORDER.name()};'
+        )
+        self.setStatusBar(self._sb)
+        self._sb.showMessage(
+            'Kliknij na mapie miejsce gdzie stoi statyw  |  F: dopasuj  |  Scroll: zoom'
+            if pick_mode else
+            'Oczekiwanie na dane pozycji…  |  Kółko myszy: zoom  |  Przeciągnij: przesuń  |  F: dopasuj'
+        )
+
         # Pick / mark-origin mode: confirm button + live status
         if pick_mode or mark_origin_mode:
             self._canvas.position_picked.connect(self._on_picked)
@@ -748,23 +826,17 @@ class MapWindow(QMainWindow):
             self._panel._btn_fit.clicked.connect(self._clear_selection)
             self._on_selection_changed()
 
-        # Status bar
-        self._sb = QStatusBar()
-        self._sb.setStyleSheet(
-            f'background: {C_PANEL.name()}; color: {C_MUTED.name()};'
-            f'border-top: 1px solid {C_BORDER.name()};'
-        )
-        self.setStatusBar(self._sb)
-        self._sb.showMessage(
-            'Kliknij na mapie miejsce gdzie stoi statyw  |  F: dopasuj  |  Scroll: zoom'
-            if pick_mode else
-            'Oczekiwanie na dane pozycji…  |  Kółko myszy: zoom  |  Przeciągnij: przesuń  |  F: dopasuj'
-        )
-
         self._fit_key = Qt.Key.Key_F
         self._sig_pos.connect(self._on_position)
         self._last_x = 0.0
         self._last_y = 0.0
+
+        # Live thread (pozycjonowanie na żywo)
+        self._live_thread: LiveThread | None = None
+
+        # Podłącz checkboxy
+        self._panel._chk_beacons.toggled.connect(self._on_toggle_beacons)
+        self._panel._chk_live.toggled.connect(self._on_toggle_live)
 
     def _on_picked(self, a: float, b: float):
         """Obsługuje wybór pozycji.
@@ -825,6 +897,62 @@ class MapWindow(QMainWindow):
     def keyPressEvent(self, e):
         if e.key() == self._fit_key:
             self._canvas.fit_view()
+
+    # ── Checkbox handlers ─────────────────────────────────────────────────────
+    def _on_toggle_beacons(self, checked: bool):
+        """Włącza/wyłącza wyświetlanie odcisków radiowych na mapie."""
+        self._canvas._show_fingerprints = checked
+        self._canvas.update()
+
+    def _on_toggle_live(self, checked: bool):
+        """Włącza/wyłącza pozycjonowanie na żywo."""
+        if checked:
+            self._start_live()
+        else:
+            self._stop_live()
+
+    def _start_live(self):
+        """Uruchamia LiveThread."""
+        if self._live_thread is not None:
+            return
+        self._live_thread = LiveThread(self)
+        self._live_thread.position.connect(self.update_position)
+        self._live_thread.status_msg.connect(self._on_live_status)
+        self._live_thread.finished.connect(self._on_live_finished)
+        self._live_thread.start()
+        self._sb.showMessage('Uruchamianie pozycjonowania na żywo…')
+
+    def _stop_live(self):
+        """Zatrzymuje LiveThread."""
+        if self._live_thread is None:
+            return
+        self._live_thread.requestInterruption()
+        self._live_thread.wait(3000)
+        self._live_thread = None
+        # Wyczyść pozycję beacona
+        self._canvas._bx = None
+        self._canvas._by = None
+        self._canvas._trail.clear()
+        self._canvas.update()
+        self._panel.refresh(0, 0, 0, 0, None, 0)
+        self._sb.showMessage('Pozycjonowanie na żywo zatrzymane')
+
+    def _on_live_status(self, msg: str):
+        """Wyświetla statusy z LiveThread w status barze."""
+        self._sb.showMessage(msg)
+
+    def _on_live_finished(self):
+        """Reakcja na zakończenie LiveThread (np. utrata połączenia)."""
+        self._live_thread = None
+        # Odznacz checkbox bez re-triggerowania sygnału
+        self._panel._chk_live.blockSignals(True)
+        self._panel._chk_live.setChecked(False)
+        self._panel._chk_live.blockSignals(False)
+
+    def closeEvent(self, event):
+        """Zamyka LiveThread przed zamknięciem okna."""
+        self._stop_live()
+        super().closeEvent(event)
 
     def _setup_style(self):
         self.setStyleSheet(f"""
@@ -889,6 +1017,93 @@ class DemoThread(QThread):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# LIVE THREAD — pozycjonowanie na żywo z serwera ESPAR
+# ─────────────────────────────────────────────────────────────────────────────
+class LiveThread(QThread):
+    """Łączy się z serwerem ESPAR, zbiera ramki BLE i estymuje pozycję WkNN."""
+
+    position = pyqtSignal(float, float, int, float)
+    status_msg = pyqtSignal(str)
+
+    WINDOW_SEC = 5.0     # czas okna zbierania danych
+    BEACON_ID  = 28
+    BLE_CHANNEL = 37
+
+    def run(self):
+        # Importy lokalne — moduły w tym samym katalogu
+        from telnet_reader import get_espar_stream
+        from wknn import load_radio_map, wknn_estimate
+        from validate import load_optimal_k
+
+        radio_map = load_radio_map()
+        if not radio_map:
+            self.status_msg.emit('Brak radio_map.json — najpierw wykonaj kalibrację')
+            return
+
+        k = load_optimal_k(default=3)
+        self.status_msg.emit(f'Łączenie z {ESPAR_HOST}:{ESPAR_PORT}… (K={k})')
+
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(ESPAR_TIMEOUT)
+            sock.connect((ESPAR_HOST, ESPAR_PORT))
+        except Exception as e:
+            self.status_msg.emit(f'Nie można połączyć: {e}')
+            return
+
+        self.status_msg.emit(f'Połączono — zbieram dane (okno {self.WINDOW_SEC}s, K={k})…')
+
+        try:
+            window_data: dict = {}
+            window_start = time.time()
+
+            for frame in get_espar_stream(sock):
+                if self.isInterruptionRequested():
+                    break
+
+                # Filtruj: kanał 37 + prawidłowe konfiguracje ESPAR
+                if frame['ble_channel'] != self.BLE_CHANNEL:
+                    continue
+                if frame['espar_char_int'] not in VALID_CHARS:
+                    continue
+                if frame['beacon_num'] != self.BEACON_ID:
+                    continue
+
+                bid = frame['beacon_num']
+                char_key = str(frame['espar_char_int'])
+                rssi = frame['rssi_dbm']
+
+                b_data = window_data.setdefault(bid, {})
+                b_data.setdefault(char_key, []).append(rssi)
+
+                # Koniec okna — estymuj pozycję
+                elapsed = time.time() - window_start
+                if elapsed >= self.WINDOW_SEC:
+                    result = wknn_estimate(window_data, radio_map,
+                                           k=k, beacon_id=self.BEACON_ID)
+                    if result is not None:
+                        x_est, y_est, conf = result
+                        self.position.emit(x_est, y_est, self.BEACON_ID, conf)
+                        self.status_msg.emit(
+                            f'Pozycja: X={x_est:.2f}m  Y={y_est:.2f}m  '
+                            f'Pewność: {int(conf*100)}%  (K={k})'
+                        )
+                    else:
+                        self.status_msg.emit('Za mało danych w oknie — czekam…')
+
+                    window_data.clear()
+                    window_start = time.time()
+        except Exception as e:
+            self.status_msg.emit(f'Błąd strumienia: {e}')
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            self.status_msg.emit('Rozłączono z serwerem ESPAR')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC API — integracja z silnikiem WkNN
 # ─────────────────────────────────────────────────────────────────────────────
 _app: QApplication | None = None
@@ -917,46 +1132,53 @@ def launch_viewer(svg_path: str = SVG_PATH,
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    try:
+        app = QApplication(sys.argv)
+        app.setStyle('Fusion')
 
-    # --pick-session : wybór lokalnego originu sesji pomiarowej
-    if '--pick-session' in sys.argv:
-        win = MapWindow(pick_mode=True)
+        # --pick-session : wybór lokalnego originu sesji pomiarowej
+        if '--pick-session' in sys.argv:
+            win = MapWindow(pick_mode=True)
+            win.show()
+            sys.exit(app.exec())
+
+        # --mark-origin : jednorazowe wyznaczenie narożnika budynku (SVG origin)
+        if '--mark-origin' in sys.argv:
+            win = MapWindow(mark_origin_mode=True)
+            win.show()
+            sys.exit(app.exec())
+
+        # --view : podgląd bazy punktów kalibracyjnych
+        if '--view' in sys.argv:
+            win = MapWindow(show_points=True)
+            win.show()
+            sys.exit(app.exec())
+
+        # --select-points : graficzny wybór wielu punktów
+        if '--select-points' in sys.argv:
+            win = MapWindow(select_mode=True)
+            win.show()
+            sys.exit(app.exec())
+
+        # --pick (legacy, zachowany dla kompatybilności)
+        if '--pick' in sys.argv:
+            win = MapWindow(pick_mode=True)
+            win.show()
+            sys.exit(app.exec())
+
+        # Tryb demo
+        win = MapWindow()
         win.show()
-        sys.exit(app.exec())
+        demo = DemoThread(win)
+        demo.position.connect(win.update_position)
+        demo.start()
+        ret = app.exec()
+        demo.requestInterruption()
+        demo.wait(2000)
+        sys.exit(ret)
 
-    # --mark-origin : jednorazowe wyznaczenie narożnika budynku (SVG origin)
-    if '--mark-origin' in sys.argv:
-        win = MapWindow(mark_origin_mode=True)
-        win.show()
-        sys.exit(app.exec())
-
-    # --view : podgląd bazy punktów kalibracyjnych
-    if '--view' in sys.argv:
-        win = MapWindow(show_points=True)
-        win.show()
-        sys.exit(app.exec())
-
-    # --select-points : graficzny wybór wielu punktów
-    if '--select-points' in sys.argv:
-        win = MapWindow(select_mode=True)
-        win.show()
-        sys.exit(app.exec())
-
-    # --pick (legacy, zachowany dla kompatybilności)
-    if '--pick' in sys.argv:
-        win = MapWindow(pick_mode=True)
-        win.show()
-        sys.exit(app.exec())
-
-    # Tryb demo
-    win = MapWindow()
-    win.show()
-    demo = DemoThread(win)
-    demo.position.connect(win.update_position)
-    demo.start()
-    ret = app.exec()
-    demo.requestInterruption()
-    demo.wait(2000)
-    sys.exit(ret)
+    except SystemExit:
+        pass
+    except Exception as e:
+        print(f'[!] Błąd map_viewer: {e}', file=sys.stderr)
+        sys.exit(0)

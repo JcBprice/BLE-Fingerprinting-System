@@ -22,15 +22,25 @@ Uzycie samodzielne:
     python rssi_analysis.py --compare snapshot1.json snapshot2.json
 """
 
+import os as _os
+_os.environ.setdefault("QT_LOGGING_RULES", "qt.*=false")
+
 import json
 import math
 import os
+import signal
+import subprocess
 import sys
 from datetime import datetime
 
 SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR      = os.path.normpath(os.path.join(SCRIPT_DIR, '..', 'data'))
 SNAPSHOTS_DIR = os.path.join(DATA_DIR, 'rssi_snapshots')
+
+# Wymuszamy backend Agg (renderuje do pliku, nie ładuje Qt/Wayland)
+# Wykresy otwieramy przez xdg-open w _show_plot()
+import matplotlib
+matplotlib.use('Agg')
 
 # Katy wiazki dla kazdego char_int (w stopniach) - do etykiet na wykresie
 CHAR_TO_DEG = {
@@ -109,6 +119,28 @@ def _normal_pdf(x: float, mean: float, std: float) -> float:
 # ══════════════════════════════════════════════════════════════════════════
 # Wizualizacja
 # ══════════════════════════════════════════════════════════════════════════
+
+def _show_plot(fig, out_path: str) -> None:
+    """Zapisuje wykres do PNG, zamyka figurę i otwiera plik w przeglądarce.
+
+    Unika problemu z backendem Qt/Wayland — matplotlib plt.show() uruchamia
+    pętlę zdarzeń Qt, która crashuje proces na Wayland przy zamykaniu okna.
+    xdg-open działa w osobnym procesie i nie wpływa na nasz program.
+    """
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    import matplotlib.pyplot as plt
+    plt.close(fig)
+    try:
+        env = dict(os.environ)
+        env["QT_LOGGING_RULES"] = "qt.*=false"
+        subprocess.Popen(['xdg-open', out_path],
+                         stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL,
+                         start_new_session=True,
+                         env=env)
+    except Exception:
+        pass  # brak xdg-open — plik i tak zapisany
 
 # Paleta kolorow dla kolejnych migawek (porownanie)
 _PALETTE = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6']
@@ -192,9 +224,7 @@ def plot_histograms(snapshots: list[dict], out_path: str | None = None) -> str:
     if out_path is None:
         labels   = '_vs_'.join(s['label'] for s in snapshots)
         out_path = os.path.join(SNAPSHOTS_DIR, f'{labels}_histogram.png')
-    fig.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.show()
-    plt.close(fig)
+    _show_plot(fig, out_path)
     return out_path
 
 
@@ -543,6 +573,26 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
     # Zamknij pętlę (dodaj pierwszy punkt na koniec)
     angles_rad_closed = np.append(angles_rad, angles_rad[0])
 
+    def _estimate_direction(rssi_vals, angles):
+        """Ważona średnia kołowa — interpoluje kierunek beacona.
+
+        RSSI [dBm] → liniowa moc (10^(rssi/10)), użyta jako waga
+        na okręgu jednostkowym. atan2 zwraca kąt wypadkowy.
+        Rozdzielczość znacznie lepsza niż ±30° z argmax.
+        """
+        # Konwersja dBm → wagi liniowe (przesunięte, aby min ≈ 0)
+        rssi_np = np.array(rssi_vals, dtype=float)
+        # Przesunięcie tak, by najsłabszy → 0, najsilniejszy → max
+        shifted = rssi_np - rssi_np.min()
+        # Podniesienie do potęgi wzmacnia kontrast (silniejsze anteny ważą więcej)
+        weights = np.power(10.0, shifted / 10.0)
+        # Ważona średnia kołowa
+        sin_sum = np.sum(weights * np.sin(angles))
+        cos_sum = np.sum(weights * np.cos(angles))
+        est_rad = np.arctan2(sin_sum, cos_sum)
+        est_deg = np.rad2deg(est_rad) % 360
+        return est_rad, round(est_deg, 1)
+
     n_selected = len(plot_data)
 
     if n_selected <= 4:
@@ -562,12 +612,10 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             vals_np = np.array(vals)
             vals_closed = np.append(vals_np, vals_np[0])
 
-            max_idx = np.argmax(vals_np)
-            best_rad = angles_rad[max_idx]
-            best_deg = sorted_degs[max_idx]
+            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
 
             color = _PALETTE[pi % len(_PALETTE)]
-            label_with_dir = f"{label} (max RSSI przy {best_deg}°)"
+            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
             ax.plot(angles_rad_closed, vals_closed, 'o-', color=color,
                     linewidth=2, markersize=5, label=label_with_dir, alpha=0.85)
             ax.fill(angles_rad_closed, vals_closed, color=color, alpha=0.1)
@@ -655,12 +703,10 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             vals_np = np.array(vals)
             vals_closed = np.append(vals_np, vals_np[0])
             
-            max_idx = np.argmax(vals_np)
-            best_rad = angles_rad[max_idx]
-            best_deg = sorted_degs[max_idx]
+            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
 
             color = _PALETTE[pi % len(_PALETTE)]
-            label_with_dir = f"{label} (max RSSI przy {best_deg}°)"
+            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
             ax_radar.plot(angles_rad_closed, vals_closed, 'o-', color=color,
                           linewidth=2, markersize=4, label=label_with_dir, alpha=0.85)
             ax_radar.fill(angles_rad_closed, vals_closed, color=color, alpha=0.08)
@@ -685,14 +731,9 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
 
     out_path = os.path.join(SNAPSHOTS_DIR, 'analiza_odciskow.png')
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-    fig.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.show()
-    plt.close(fig)
+    _show_plot(fig, out_path)
     print(f'\n  [OK] Wykres zapisano: {out_path}')
 
-
-
-# ══════════════════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
     import argparse
