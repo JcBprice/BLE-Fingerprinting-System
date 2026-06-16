@@ -1,0 +1,109 @@
+{
+  "origin_label": "korytarz",
+  "ox": 41.617,
+  "oy": 5.777,
+  "target_packets": 100,
+  "tripod": {
+    "n_beacons": 3,
+    "beacon_ids": [
+      9,
+      10,
+      14
+    ],
+    "spacing_m": 1.0,
+    "angle_deg": 90.0,
+    "scan_direction": "prawo"
+  },
+  "points": [
+    {
+      "label": "test01",
+      "x_local": 0.0,
+      "y_local": -1.0,
+      "x_global": 41.617,
+      "y_global": 4.777,
+      "beacons": [
+        {
+          "id": 9,
+          "x": 41.617,
+          "y": 4.777,
+          "local_x": 0.0,
+          "local_y": -1.0
+        },
+        {
+          "id": 10,
+          "x": 41.617,
+          "y": 5.777,
+          "local_x": 0.0,
+          "local_y": 0.0
+        },
+        {
+          "id": 14,
+          "x": 41.617,
+          "y": 6.777,
+          "local_x": 0.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test02",
+      "x_local": 1.0,
+      "y_local": -1.0,
+      "x_global": 42.617,
+      "y_global": 4.777,
+      "beacons": [
+        {
+          "id": 9,
+          "x": 42.617,
+          "y": 4.777,
+          "local_x": 1.0,
+          "local_y": -1.0
+        },
+        {
+          "id": 10,
+          "x": 42.617,
+          "y": 5.777,
+          "local_x": 1.0,
+          "local_y": 0.0
+        },
+        {
+          "id": 14,
+          "x": 42.617,
+          "y": 6.777,
+          "local_x": 1.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test03",
+      "x_local": 2.0,
+      "y_local": -1.0,
+      "x_global": 43.617,
+      "y_global": 4.777,
+      "beacons": [
+        {
+          "id": 9,
+          "x": 43.617,
+          "y": 4.777,
+          "local_x": 2.0,
+          "local_y": -1.0
+        },
+        {
+          "id": 10,
+          "x": 43.617,
+          "y": 5.777,
+          "local_x": 2.0,
+          "local_y": 0.0
+        },
+        {
+          "id": 14,
+          "x": 43.617,
+          "y": 6.777,
+          "local_x": 2.0,
+          "local_y": 1.0
+        }
+      ]
+    }
+  ]
+}

@@ -55,22 +55,58 @@ def parse_beacon_data(json_line: str) -> dict | None:
         if len(fields) < 6:
             return None  # za mało pól — niepełna lub uszkodzona ramka
 
+        # Zadbaj o to, aby pierwsze 6 pól było niepustych
+        for i in range(6):
+            if not fields[i].strip():
+                return None
+
+        # Sprawdź poprawność typów liczbowych w polach
+        try:
+            room_val  = int(fields[0])
+            beacon_id = int(fields[1])
+            rssi_abs  = int(fields[2])
+            char_val  = int(fields[3])
+            ble_chan  = int(fields[4])
+            frame_num = int(fields[5])
+        except ValueError:
+            return None  # uszkodzone pola numeryczne
+
+        # Filtruj kanały BLE (tylko poprawne kanały advertising 37, 38, 39)
+        if ble_chan not in (37, 38, 39):
+            return None
+
+        # Filtruj anomalne/uszkodzone wartości RSSI (np. szum pomiarowy powyżej -10 lub poniżej -110 dBm)
+        rssi_dbm = -1 * rssi_abs
+        if rssi_dbm > -10 or rssi_dbm < -110:
+            return None
+
+        # Filtruj psujące/anomalne konfiguracje anteny:
+        # - w każdym kierunku (wszystkie dyrektory włączone / 4095)
+        # - z wyłączonymi dyrektorami (wszystkie reflektory włączone / 0)
+        # - dodatkowo upewnij się, że charakterystyka należy do 12 poprawnych kierunków (VALID_CHARS)
+        valid_directional = {31, 62, 124, 248, 496, 992, 1984, 3968, 3841, 3587, 3079, 2063}
+        if char_val not in valid_directional:
+            return None
+
         # Opcjonalne pola GPS (dostępne tylko gdy beacon ma odbiornik GPS)
         lat, lon, alt = 0.0, 0.0, 0.0
         if len(fields) >= 9:
-            lat = float(fields[6])
-            lon = float(fields[7])
-            alt = float(fields[8])
+            try:
+                lat = float(fields[6])
+                lon = float(fields[7])
+                alt = float(fields[8])
+            except ValueError:
+                pass
 
         return {
             "device":         data.get("v", "unknown"),
-            "map_loc":        700 + int(fields[0]),   # numer pokoju na mapie
-            "beacon_num":     int(fields[1]),
-            "rssi_dbm":       -1 * int(fields[2]),    # przywracamy znak minus
-            "espar_char_int": int(fields[3]),          # wektor sterujący (int)
-            "espar_char_bin": bin(int(fields[3])),     # wektor sterujący (binarnie)
-            "ble_channel":    int(fields[4]),
-            "ble_frame_num":  int(fields[5]),
+            "map_loc":        700 + room_val,
+            "beacon_num":     beacon_id,
+            "rssi_dbm":       rssi_dbm,
+            "espar_char_int": char_val,
+            "espar_char_bin": bin(char_val),
+            "ble_channel":    ble_chan,
+            "ble_frame_num":  frame_num,
             "gps":            {"lat": lat, "lon": lon, "alt": alt},
         }
 

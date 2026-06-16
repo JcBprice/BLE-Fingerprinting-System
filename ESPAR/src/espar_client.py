@@ -4,7 +4,7 @@ import time
 class EsparClient:
     """Zarządza połączeniem TCP z anteną ESPAR."""
     
-    def __init__(self, host: str = "153.19.49.102", port: int = 8893, timeout: int = 10):
+    def __init__(self, host: str = "153.19.49.102", port: int = 8894, timeout: int = 10):
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -16,6 +16,11 @@ class EsparClient:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(self.timeout)
             s.connect((self.host, self.port))
+            # Wyłącz algorytm Nagle'a dla natychmiastowej transmisji ramek bez opóźnień buforowania
+            try:
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            except Exception:
+                pass
             s.sendall(b"\r\n")
             time.sleep(0.5)
             s.sendall(b"start\r\n")

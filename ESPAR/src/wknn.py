@@ -141,7 +141,7 @@ def _get_directions(radio_map: list, beacon_id: int) -> list:
     bid = str(beacon_id)
     for fp in radio_map:
         avg_dict = fp.get("beacons", {}).get(bid, {}).get("avg", {})
-        dirs.update(avg_dict.keys())
+        dirs.update(k for k in avg_dict.keys() if k not in ("0", "4095"))
     return sorted(dirs, key=lambda x: int(x))
 
 
@@ -276,26 +276,21 @@ def wknn_estimate(window_data: dict, radio_map: list,
         return None
 
     # 3. Uśrednij RSSI z okna dla każdej konfiguracji anteny.
-    #    Brakujące konfiguracje otrzymują wartość -95.0 dBm (kara).
+    #    Porównujemy tylko konfiguracje z rzeczywistymi pomiarami.
     raw_avg = {}
-    valid_readings = 0
+    valid_dirs = []
     for d in directions:
         # Klucz może być stringiem lub intem — sprawdzamy oba warianty
         vals = b_data.get(d) or b_data.get(str(d)) or b_data.get(int(d))
         if vals:
             raw_avg[str(d)] = sum(vals) / len(vals)
-            valid_readings += 1
+            valid_dirs.append(str(d))
 
     # Odrzuć okno, jeśli danych jest zbyt mało (mniej niż połowa konfiguracji)
-    if valid_readings < 6:
+    if len(valid_dirs) < 6:
         return None
 
-    # Uzupełnij brakujące konfiguracje karą -95 dBm
-    for d in directions:
-        if str(d) not in raw_avg:
-            raw_avg[str(d)] = -95.0
-
-    live_vec = [raw_avg[str(d)] for d in directions]
+    live_vec = [raw_avg[d] for d in valid_dirs]
 
     # 4. Oblicz odległości do wszystkich punktów kalibracyjnych
     #
@@ -305,7 +300,8 @@ def wknn_estimate(window_data: dict, radio_map: list,
     # W obu przypadkach sortujemy rosnąco i wybieramy K pierwszych.
     dists = []
     for fp in radio_map:
-        fp_vec = _fp_vector(fp, beacon_id, directions)
+        # Budujemy wektor odcisków radiowych tylko dla konfiguracji obecnych w oknie czasowym
+        fp_vec = _fp_vector(fp, beacon_id, valid_dirs)
         if DISTANCE_METRIC == 'euclidean':
             d = _euclidean_distance(live_vec, fp_vec)
         else:  # 'pearson' (domyślne)

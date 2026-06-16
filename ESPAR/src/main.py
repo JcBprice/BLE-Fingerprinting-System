@@ -47,8 +47,8 @@ def main():
             
             n_test  = len(load_test_set())
             n_radio = len(load_radio_map())
-            best_k  = load_optimal_k(default=None)
-            k_info  = str(best_k) if best_k is not None else "niewyznaczone"
+            best_k  = load_optimal_k(default=3)
+            k_info  = str(best_k)
 
             print("\n=== SYSTEM LOKALIZACJI ESPAR ===")
             print(f"  Sesja:     {sess_info}")
@@ -61,7 +61,7 @@ def main():
             print("  4 - Analiza RSSI              (histogramy + stabilnosc)")
             print("  ---- Walidacja -----------------------------------------")
             print("  5 - Zbieranie punktow testowych")
-            print("  6 - Dobor parametru K         (reczny / automatyczny)")
+            print(f"  6 - Dobor parametru K         (reczny / automatyczny, aktualne K: {k_info})")
             print("  7 - Analiza bledow            (RMSE, P90, CDF)")
             print("  ---------------------------------------------------------")
             print("  0 - Wyjscie")
@@ -74,11 +74,18 @@ def main():
                 print("\n  Tworzenie mapy odciskow radiowych:")
                 print("    p - Pojedynczy punkt  (reczne podanie etykiety i wspolrzednych)")
                 print("    s - Siatka automatyczna (plan calego obszaru)")
-                sub = input("  Wybierz [p/s] -> ").strip().lower()
-                if sub == "s":
-                    calibrator.run_grid_calibration()
-                else:
-                    calibrator.run_average()
+                while True:
+                    sub = input("  Wybierz [p/s] (lub Enter aby powrócić): ").strip().lower()
+                    if not sub:
+                        break
+                    if sub == "s":
+                        calibrator.run_grid_calibration()
+                        break
+                    elif sub == "p":
+                        calibrator.run_average()
+                        break
+                    else:
+                        print("  [!] Nieprawidłowy wybór. Wpisz 'p' lub 's' (lub wciśnij Enter aby powrócić).")
             elif choice == "3":
                 viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
                 print("Otwieram mape z punktami kalibracyjnymi...")
@@ -90,43 +97,63 @@ def main():
                 print("\n  Analiza RSSI:")
                 print("    1 - Analiza istniejacych danych  (z mapy / migawek, offline)")
                 print("    2 - Nowy pomiar na zywo          (wymaga polaczenia z serwerem)")
-                sub = input("  Wybierz [1/2] -> ").strip()
-                if sub == "2":
-                    from rssi_analysis import run_rssi_analysis
-                    run_rssi_analysis(
-                        connect_fn=client.connect_and_start,
-                        stream_fn=get_espar_stream,
-                        close_fn=client.stop_and_close,
-                        valid_chars=Calibrator.VALID_CHARS,
-                        beacon_id=28,
-                        n_per_config=500,
-                    )
-                else:
-                    from rssi_analysis import run_rssi_offline
-                    run_rssi_offline(beacon_id=28)
+                while True:
+                    sub = input("  Wybierz [1/2] (lub Enter aby powrócić): ").strip()
+                    if not sub:
+                        break
+                    if sub == "2":
+                        from rssi_analysis import run_rssi_analysis
+                        run_rssi_analysis(
+                            connect_fn=client.connect_and_start,
+                            stream_fn=get_espar_stream,
+                            close_fn=client.stop_and_close,
+                            valid_chars=Calibrator.VALID_CHARS,
+                            beacon_id=28,
+                            n_per_config=500,
+                        )
+                        break
+                    elif sub == "1":
+                        from rssi_analysis import run_rssi_offline
+                        run_rssi_offline(beacon_id=28)
+                        break
+                    else:
+                        print("  [!] Nieprawidłowy wybór. Wpisz '1' lub '2' (lub wciśnij Enter aby powrócić).")
             elif choice == "5":
                 calibrator.run_collect_test_point()
             elif choice == "6":
                 print("\n  Dobor parametru K:")
                 print("    a - Automatyczny (grid search, minimalizacja RMSE)")
                 print("    r - Reczny (podaj wartosc K)")
-                sub = input("  Wybierz [a/r] -> ").strip().lower()
-                if sub == "r":
-                    try:
-                        k_val = int(input("  Podaj wartosc K: ").strip())
-                        if k_val < 1:
-                            raise ValueError
-                        os.makedirs(DATA_DIR, exist_ok=True)
-                        import json as _json
-                        with open(os.path.join(DATA_DIR, "optimal_k.json"), "w",
-                                  encoding="utf-8") as _f:
-                            _json.dump({"k": k_val, "beacon_id": 28,
-                                        "source": "manual"}, _f, indent=2)
-                        print(f"  [OK] Zapisano K={k_val} (reczny dobor).")
-                    except ValueError:
-                        print("  [!] Nieprawidlowa wartosc K.")
-                else:
-                    optimize_k(beacon_id=28)
+                while True:
+                    sub = input("  Wybierz [a/r] (lub Enter aby powrócić): ").strip().lower()
+                    if not sub:
+                        break
+                    if sub == "r":
+                        while True:
+                            try:
+                                k_val_raw = input("  Podaj wartosc K (lub Enter aby anulowac): ").strip()
+                                if not k_val_raw:
+                                    print("  [!] Anulowano.")
+                                    break
+                                k_val = int(k_val_raw)
+                                if k_val < 1:
+                                    raise ValueError
+                                os.makedirs(DATA_DIR, exist_ok=True)
+                                import json as _json
+                                with open(os.path.join(DATA_DIR, "optimal_k.json"), "w",
+                                          encoding="utf-8") as _f:
+                                    _json.dump({"k": k_val, "beacon_id": 28,
+                                                "source": "manual"}, _f, indent=2)
+                                print(f"  [OK] Zapisano K={k_val} (reczny dobor).")
+                                break
+                            except ValueError:
+                                print("  [!] Nieprawidlowa wartosc K. Podaj liczbe dodatnia.")
+                        break
+                    elif sub == "a":
+                        optimize_k(beacon_id=28)
+                        break
+                    else:
+                        print("  [!] Nieprawidłowy wybór. Wpisz 'a' lub 'r' (lub wciśnij Enter aby powrócić).")
             elif choice == "7":
                 run_validation(k=None, beacon_id=28)
             elif choice == "0":

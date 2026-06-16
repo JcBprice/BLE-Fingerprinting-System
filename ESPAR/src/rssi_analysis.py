@@ -381,12 +381,21 @@ def run_rssi_analysis(connect_fn, stream_fn, close_fn,
         print(f'\n  Dostepne poprzednie migawki:')
         for i, p in enumerate(prev[-5:], 1):
             print(f'    {i}. {os.path.basename(p)}')
-        ans = input('  Nakladac poprzednia migawke? (numer / Enter = nie): ').strip()
-        if ans.isdigit():
-            idx = int(ans) - 1
-            prev_list = prev[-5:]
-            if 0 <= idx < len(prev_list):
-                snaps_to_plot.append(load_snapshot(prev_list[idx]))
+        
+        prev_list = prev[-5:]
+        while True:
+            ans = input('  Nakladac poprzednia migawke? (numer / Enter = nie): ').strip()
+            if not ans:
+                break
+            try:
+                idx = int(ans) - 1
+                if 0 <= idx < len(prev_list):
+                    snaps_to_plot.append(load_snapshot(prev_list[idx]))
+                    break
+                else:
+                    print(f"  [!] Numer poza zakresem [1-{len(prev_list)}]. Spróbuj ponownie.")
+            except ValueError:
+                print("  [!] Nieprawidłowy format. Podaj numer lub wciśnij Enter.")
 
     if len(snaps_to_plot) >= 2:
         print_stability_table(snaps_to_plot)
@@ -454,9 +463,13 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
     print('  Wybierz sposób doboru punktów do analizy:')
     print('    1 - Wybór graficzny z mapy (klikaj myszką)')
     print('    2 - Wybór tekstowy z listy (konsola)')
-    choice = input('  Wybór [1/2, domyślnie 1] -> ').strip()
-    if not choice:
-        choice = '1'
+    while True:
+        choice = input('  Wybór [1/2, domyślnie 1] -> ').strip()
+        if not choice:
+            choice = '1'
+        if choice in ('1', '2'):
+            break
+        print("  [!] Nieprawidłowy wybór. Wpisz 1 lub 2 (lub Enter dla domyślnego 1).")
 
     selected_idx = []
     if choice == '1':
@@ -505,18 +518,33 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             for i in range(snap_start, len(entries)):
                 print(f'    {i+1:>3}. {entries[i][1]}')
 
-        print(f'\n  Wpisz numery punktów do porównania (np. "1 5 12") lub Enter = pierwszy:')
-        raw = input('  Numery -> ').strip()
-        if not raw:
-            selected_idx = [0]
-        else:
-            for part in raw.replace(',', ' ').split():
+        while True:
+            print(f'\n  Wpisz numery punktów do porównania (np. "1 5 12") lub Enter = pierwszy:')
+            raw = input('  Numery -> ').strip()
+            if not raw:
+                selected_idx = [0]
+                break
+            
+            parts = raw.replace(',', ' ').split()
+            valid = True
+            temp_idx = []
+            for part in parts:
                 try:
                     idx = int(part) - 1
                     if 0 <= idx < len(entries):
-                        selected_idx.append(idx)
+                        temp_idx.append(idx)
+                    else:
+                        print(f"  [!] Numer {part} poza zakresem [1-{len(entries)}].")
+                        valid = False
+                        break
                 except ValueError:
-                    pass
+                    print(f"  [!] '{part}' nie jest poprawną liczbą.")
+                    valid = False
+                    break
+            
+            if valid and temp_idx:
+                selected_idx = temp_idx
+                break
 
     if not selected_idx:
         print('  [!] Brak prawidłowych wyborów.')
@@ -560,7 +588,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
         ch = deg_to_char[deg]
         row = f'  {deg:>4}°  {ch:>6}  '
         for _, avgs in plot_data:
-            val = avgs.get(str(ch))
+            val = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
             if val is not None:
                 row += f'  {float(val):>12.2f}'
             else:
@@ -607,7 +635,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             vals = []
             for deg in sorted_degs:
                 ch = deg_to_char[deg]
-                v = avgs.get(str(ch))
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
                 vals.append(float(v) if v is not None else -100.0)
             vals_np = np.array(vals)
             vals_closed = np.append(vals_np, vals_np[0])
@@ -651,7 +679,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             row = []
             for deg in sorted_degs:
                 ch = deg_to_char[deg]
-                v = avgs.get(str(ch))
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
                 row.append(float(v) if v is not None else np.nan)
             matrix.append(row)
             labels_list.append(label)
@@ -698,7 +726,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             vals = []
             for deg in sorted_degs:
                 ch = deg_to_char[deg]
-                v = avgs.get(str(ch))
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
                 vals.append(float(v) if v is not None else -100.0)
             vals_np = np.array(vals)
             vals_closed = np.append(vals_np, vals_np[0])

@@ -392,11 +392,18 @@ def optimize_k(beacon_id: int = 28, k_max: int = 11) -> int:
         }, f, indent=2, ensure_ascii=False)
     print(f'  Zapisano: {OPTIMAL_K_PATH}')
 
-    ans = input('\n  Generuj wykres K vs. błąd? (t/n): ').strip().lower()
-    if ans == 't':
-        p = _plot_k_optimization(list(k_stats.keys()), k_stats, best_k)
-        if p:
-            print(f'  Wykres: {p}')
+    while True:
+        ans = input('\n  Generuj wykres K vs. błąd? (t/n, domyślnie n): ').strip().lower()
+        if not ans:
+            ans = 'n'
+        if ans in ('t', 'y', 'yes', 'tak'):
+            p = _plot_k_optimization(list(k_stats.keys()), k_stats, best_k)
+            if p:
+                print(f'  Wykres: {p}')
+            break
+        elif ans in ('n', 'no', 'nie'):
+            break
+        print("  [!] Nieprawidłowy wybór. Wpisz 't' (tak) lub 'n' (nie).")
 
     return best_k
 
@@ -512,14 +519,21 @@ def run_validation(k: int | None = None, beacon_id: int = 28) -> None:
     print(f'\n  Raport JSON: {report_path}')
 
     # ── Wykresy ───────────────────────────────────────────────────────────
-    ans = input('\n  Generuj wykresy? (t/n): ').strip().lower()
-    if ans == 't':
-        p1 = _plot_cdf(errors, stats, k, beacon_id)
-        p2 = _plot_scatter(results, stats)
-        if p1:
-            print(f'  CDF:     {p1}')
-        if p2:
-            print(f'  Scatter: {p2}')
+    while True:
+        ans = input('\n  Generuj wykresy? (t/n, domyślnie n): ').strip().lower()
+        if not ans:
+            ans = 'n'
+        if ans in ('t', 'y', 'yes', 'tak'):
+            p1 = _plot_cdf(errors, stats, k, beacon_id)
+            p2 = _plot_scatter(results, stats)
+            if p1:
+                print(f'  CDF:     {p1}')
+            if p2:
+                print(f'  Scatter: {p2}')
+            break
+        elif ans in ('n', 'no', 'nie'):
+            break
+        print("  [!] Nieprawidłowy wybór. Wpisz 't' (tak) lub 'n' (nie).")
 
 
 # ══════════════════════════════════════════════════════════════════════════
