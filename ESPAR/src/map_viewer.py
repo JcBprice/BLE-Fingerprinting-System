@@ -1142,7 +1142,6 @@ class MapWindow(QMainWindow):
         if self._grid_collect_mode:
             calibrate_mode = True
             if os.path.exists(self._grid_json_path):
-                import json
                 with open(self._grid_json_path, 'r', encoding='utf-8') as f:
                     self._grid_data = json.load(f)
                 if self._grid_data and self._grid_data.get('points'):
@@ -1157,10 +1156,11 @@ class MapWindow(QMainWindow):
         if pick_mode or show_points or mark_origin_mode or select_mode:
             try:
                 radio_path = os.path.join(_DATA_DIR, 'radio_map.json')
-                with open(radio_path, encoding='utf-8') as f:
-                    existing_points = json.load(f)
-            except Exception:
-                pass
+                if os.path.exists(radio_path):
+                    with open(radio_path, encoding='utf-8') as f:
+                        existing_points = json.load(f)
+            except Exception as e:
+                print(f"[!] Błąd wczytywania radio_map.json: {e}", file=sys.stderr)
 
         # Wczytaj origin aktywnej sesji (żółty marker)
         session_origin = None
@@ -1265,13 +1265,6 @@ class MapWindow(QMainWindow):
                 self._panel._btn_save_calib.clicked.connect(self._save_and_exit)
                 self._panel._btn_force_save.clicked.connect(self._force_save)
                 self._panel._btn_cancel_calib.clicked.connect(self.close)
-        elif self._show_points or self._select_mode:
-            self._panel._btn_clear.setText(btn_label)
-            self._panel._btn_clear.setStyleSheet(
-                'QPushButton { background: #166534; color: #86efac; '
-                'border: 1px solid #22c55e; border-radius: 5px; padding: 8px; font-size: 12px; font-weight: bold; }'
-                'QPushButton:hover { background: #15803d; }'
-            )
         elif pick_mode or mark_origin_mode:
             self._canvas.position_picked.connect(self._on_picked)
             btn_label = ('Zatwierdź origin budynku' if mark_origin_mode
@@ -2027,7 +2020,6 @@ if __name__ == '__main__':
             label = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else 'punkt'
             b_json = sys.argv[idx + 2] if idx + 2 < len(sys.argv) else '[{"id": 28, "x": 0.0, "y": 0.0}]'
             target_pkts = int(sys.argv[idx + 3]) if idx + 3 < len(sys.argv) else 100
-            import json
             try:
                 beacons = json.loads(b_json)
             except Exception:

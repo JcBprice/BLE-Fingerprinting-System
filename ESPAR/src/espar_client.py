@@ -4,7 +4,7 @@ import time
 class EsparClient:
     """Zarządza połączeniem TCP z anteną ESPAR."""
     
-    def __init__(self, host: str = "153.19.49.102", port: int = 8894, timeout: int = 10):
+    def __init__(self, host: str = "153.19.49.102", port: int = 8893, timeout: int = 10):
         self.host = host
         self.port = port
         self.timeout = timeout

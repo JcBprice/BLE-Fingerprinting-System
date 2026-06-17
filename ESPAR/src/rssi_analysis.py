@@ -109,13 +109,6 @@ def _stats(values: list) -> tuple[float, float, float, float]:
     return mean, std, min(values), max(values)
 
 
-def _normal_pdf(x: float, mean: float, std: float) -> float:
-    """Wartosc gestosci prawdopodobienstwa rozkladu normalnego w punkcie x."""
-    if std == 0:
-        return 0.0
-    return (1.0 / (std * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((x - mean) / std) ** 2)
-
-
 # ══════════════════════════════════════════════════════════════════════════
 # Wizualizacja
 # ══════════════════════════════════════════════════════════════════════════
@@ -146,84 +139,195 @@ def _show_plot(fig, out_path: str) -> None:
 _PALETTE = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6']
 
 
-def plot_histograms(snapshots: list[dict], out_path: str | None = None) -> str:
+def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str:
     """
-    Rysuje siatke 12 histogramow (jeden per konfiguracja anteny).
-
-    Kazda migawka (snapshot) jest nalozona odrebnym kolorem.
-    Nad histogramem rysowana jest krzywa gestosci normalnej.
-
-    Args:
-        snapshots:  Lista slownikow z kluczami 'label', 'timestamp', 'data'.
-        out_path:   Sciezka zapisu PNG (None = auto).
-
-    Returns:
-        Sciezka do zapisanego pliku PNG.
+    Rysuje wykresy radarowe (polar) dla migawek RSSI.
+    Zastępuje dawne histogramy.
+    
+    Jeśli wybrano <= 4 migawki/punkty, nakłada je na jeden wykres radarowy (overlay).
+    Jeśli wybrano > 4, rysuje heatmapę po lewej i radar wybranych po prawej.
     """
     try:
         import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gridspec
         import numpy as np
     except ImportError:
-        print('[!] matplotlib/numpy niedostepny.')
+        print('[!] matplotlib/numpy niedostępny.')
         return ''
 
-    # Ustal wspolny zbior char_int ze wszystkich migawek
-    all_chars = set()
+    # Kąty i konfiguracje
+    deg_to_char = {deg: ch for ch, deg in CHAR_TO_DEG.items()}
+    sorted_degs = sorted(deg_to_char.keys())  # 0, 30, 60, ..., 330
+    angles_deg = np.array(sorted_degs, dtype=float)
+    angles_rad = np.deg2rad(angles_deg)
+    angles_rad_closed = np.append(angles_rad, angles_rad[0])
+
+    def _estimate_direction(rssi_vals, angles):
+        rssi_np = np.array(rssi_vals, dtype=float)
+        shifted = rssi_np - rssi_np.min()
+        weights = np.power(10.0, shifted / 10.0)
+        sin_sum = np.sum(weights * np.sin(angles))
+        cos_sum = np.sum(weights * np.cos(angles))
+        est_rad = np.arctan2(sin_sum, cos_sum)
+        est_deg = np.rad2deg(est_rad) % 360
+        return est_rad, round(est_deg, 1)
+
+    # Przygotuj dane do wykresu: list of (label, {char_int_str: avg_rssi})
+    plot_data = []
+    beacon_id = None
     for snap in snapshots:
-        all_chars.update(int(k) for k in snap.get('data', {}))
-    chars = sorted(CHAR_TO_DEG.keys() & all_chars)
+        label = snap.get('label', 'migawka')
+        if beacon_id is None:
+            beacon_id = snap.get('beacon_id', 28)
+        data = snap.get('data', {})
+        snap_avgs = {}
+        for ch, vals in data.items():
+            if isinstance(vals, list):
+                if vals:
+                    snap_avgs[str(ch)] = sum(vals) / len(vals)
+            elif vals is not None:
+                snap_avgs[str(ch)] = float(vals)
+        plot_data.append((label, snap_avgs))
 
-    n_cols = 4
-    n_rows = math.ceil(len(chars) / n_cols)
-    fig = plt.figure(figsize=(n_cols * 3.5, n_rows * 2.8))
-    gs  = gridspec.GridSpec(n_rows, n_cols, figure=fig,
-                            hspace=0.55, wspace=0.35)
+    n_selected = len(plot_data)
+    if n_selected == 0:
+        return ''
 
-    for idx, char_int in enumerate(chars):
-        ax  = fig.add_subplot(gs[idx // n_cols, idx % n_cols])
-        deg = CHAR_TO_DEG.get(char_int, '?')
+    if n_selected <= 4:
+        # Pojedyncze porównanie lub pojedynczy punkt — radar overlay
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={'projection': 'polar'})
+        ax.set_theta_zero_location('N')   # 0° na górze
+        ax.set_theta_direction(-1)         # zgodnie z ruchem wskazówek zegara
 
-        for snap_idx, snap in enumerate(snapshots):
-            values = snap['data'].get(str(char_int), snap['data'].get(char_int, []))
-            if not values:
-                continue
+        radar_plots_data = []
 
-            color = _PALETTE[snap_idx % len(_PALETTE)]
-            mean, std, vmin, vmax = _stats(values)
+        for pi, (label, avgs) in enumerate(plot_data):
+            vals = []
+            for deg in sorted_degs:
+                ch = deg_to_char[deg]
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
+                vals.append(float(v) if v is not None else -100.0)
+            vals_np = np.array(vals)
+            vals_closed = np.append(vals_np, vals_np[0])
 
-            # Histogram (ggestosc prawdopodobienstwa)
-            ax.hist(values, bins=20, density=True,
-                    color=color, alpha=0.4, edgecolor='none')
+            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
 
-            # Krzywa normalna
-            xs  = np.linspace(vmin - 2, vmax + 2, 200)
-            pdf = [_normal_pdf(x, mean, std) for x in xs]
-            ax.plot(xs, pdf, color=color, lw=1.8,
-                    label=f"{snap['label']}\n"
-                           r"$\mu$" + f"={mean:.1f}, "
-                           r"$\sigma$" + f"={std:.1f}")
+            color = _PALETTE[pi % len(_PALETTE)]
+            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
+            ax.plot(angles_rad_closed, vals_closed, 'o-', color=color,
+                    linewidth=2, markersize=5, label=label_with_dir, alpha=0.85)
+            ax.fill(angles_rad_closed, vals_closed, color=color, alpha=0.1)
+            
+            radar_plots_data.append((best_rad, best_deg, color))
 
-        ax.set_title(f'{char_int}  ({deg}\u00b0)', fontsize=9, pad=3)
-        ax.set_xlabel('RSSI [dBm]', fontsize=7, labelpad=2)
-        ax.set_ylabel('PDF', fontsize=7, labelpad=2)
-        ax.tick_params(labelsize=7)
-        ax.grid(True, alpha=0.2)
-        if len(snapshots) <= 3:
-            ax.legend(fontsize=6, loc='upper left',
-                      framealpha=0.7, handlelength=1)
+        ax.set_xticks(angles_rad)
+        ax.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=9)
+        ax.set_ylabel('RSSI [dBm]', fontsize=9, labelpad=20)
+        ax.set_title(f'Odciski radiowe (radar) — Beacon {beacon_id}\n'
+                     f'(Linia przerywana = szacowany kierunek beacona)',
+                     fontsize=12, pad=20)
+        
+        # Rysuj strzałki kierunku beacona
+        r_min, r_max = ax.get_ylim()
+        if r_max > r_min:
+            for best_rad, best_deg, color in radar_plots_data:
+                ax.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
+                ax.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
+                            arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=15))
 
-    # Tytul glowny
-    ts_list = ' / '.join(s.get('timestamp', '')[:16] for s in snapshots)
-    fig.suptitle(
-        f'Stabilnosc RSSI — konfiguracje anteny ESPAR\n'
-        f'Beacon {snapshots[0].get("beacon_id", "?")} | {ts_list}',
-        fontsize=11, y=1.01,
-    )
+        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=9)
+        ax.grid(True, alpha=0.3)
+    else:
+        # Wiele punktów — heatmapa + radar wybranych
+        fig = plt.figure(figsize=(16, 8))
+
+        # Panel lewy: heatmapa
+        ax_heat = fig.add_subplot(121)
+        matrix = []
+        labels_list = []
+        for label, avgs in plot_data:
+            row = []
+            for deg in sorted_degs:
+                ch = deg_to_char[deg]
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
+                row.append(float(v) if v is not None else np.nan)
+            matrix.append(row)
+            labels_list.append(label)
+
+        matrix_np = np.array(matrix)
+        im = ax_heat.imshow(matrix_np, aspect='auto', cmap='RdYlBu_r',
+                            interpolation='nearest')
+        ax_heat.set_xticks(range(len(sorted_degs)))
+        ax_heat.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=8,
+                                rotation=45, ha='right')
+        ax_heat.set_yticks(range(len(labels_list)))
+        ax_heat.set_yticklabels(labels_list, fontsize=8)
+        ax_heat.set_xlabel('Kąt wiązki anteny ESPAR')
+        ax_heat.set_ylabel('Punkt kalibracyjny')
+        ax_heat.set_title(f'Mapa RSSI [dBm] — Beacon {beacon_id}', fontsize=11)
+        cbar = fig.colorbar(im, ax=ax_heat, shrink=0.8)
+        cbar.set_label('RSSI [dBm]', fontsize=9)
+
+        # Adnotacja wartości w komórkach (jeśli <20 punktów)
+        if len(labels_list) <= 20:
+            for yi in range(matrix_np.shape[0]):
+                for xi in range(matrix_np.shape[1]):
+                    v = matrix_np[yi, xi]
+                    if not np.isnan(v):
+                        ax_heat.text(xi, yi, f'{v:.0f}', ha='center', va='center',
+                                     fontsize=6, color='white' if v < -78 else 'black')
+
+        # Panel prawy: radar wybranych (max 4, co kwartał)
+        ax_radar = fig.add_subplot(122, projection='polar')
+        ax_radar.set_theta_zero_location('N')
+        ax_radar.set_theta_direction(-1)
+
+        # Wybierz max 4 równomiernie rozłożone
+        step = max(n_selected // 4, 1)
+        show_idx = list(range(0, n_selected, step))[:4]
+
+        radar_plots_data = []
+
+        for pi, si in enumerate(show_idx):
+            label, avgs = plot_data[si]
+            vals = []
+            for deg in sorted_degs:
+                ch = deg_to_char[deg]
+                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
+                vals.append(float(v) if v is not None else -100.0)
+            vals_np = np.array(vals)
+            vals_closed = np.append(vals_np, vals_np[0])
+            
+            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
+
+            color = _PALETTE[pi % len(_PALETTE)]
+            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
+            ax_radar.plot(angles_rad_closed, vals_closed, 'o-', color=color,
+                          linewidth=2, markersize=4, label=label_with_dir, alpha=0.85)
+            ax_radar.fill(angles_rad_closed, vals_closed, color=color, alpha=0.08)
+            radar_plots_data.append((best_rad, best_deg, color))
+
+        ax_radar.set_xticks(angles_rad)
+        ax_radar.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=8)
+        ax_radar.set_title('Odciski radiowe (radar)\n(Linia przerywana = szacowany kierunek beacona)', fontsize=11, pad=15)
+        
+        # Rysuj strzałki kierunku beacona
+        r_min, r_max = ax_radar.get_ylim()
+        if r_max > r_min:
+            for best_rad, best_deg, color in radar_plots_data:
+                ax_radar.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
+                ax_radar.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
+                                  arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=12))
+
+        ax_radar.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=8)
+        ax_radar.grid(True, alpha=0.3)
+
+    fig.tight_layout()
 
     if out_path is None:
         labels   = '_vs_'.join(s['label'] for s in snapshots)
-        out_path = os.path.join(SNAPSHOTS_DIR, f'{labels}_histogram.png')
+        out_path = os.path.join(SNAPSHOTS_DIR, f'{labels}_radar.png')
+    
+    os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
     _show_plot(fig, out_path)
     return out_path
 
@@ -241,7 +345,7 @@ def print_stability_table(snapshots: list[dict]) -> None:
     # Naglowek
     hdr = f"{'char_int':>8}  {'deg':>4}  "
     for snap in snapshots:
-        ts = snap.get('timestamp', '')[:16]
+        ts = snap.get('timestamp', '')[:16] or snap.get('label', '')[:16]
         hdr += f"  {snap['label']:>12}(mu/std)"
     print('\n' + hdr)
     print('  ' + '-' * (8 + 6 + n * 24))
@@ -250,8 +354,11 @@ def print_stability_table(snapshots: list[dict]) -> None:
         row = f"  {char_int:>8}  {CHAR_TO_DEG.get(char_int, '?'):>3}d  "
         for snap in snapshots:
             vals = snap['data'].get(str(char_int), snap['data'].get(char_int, []))
-            if vals:
-                m, s, _, _ = _stats(vals)
+            if vals is not None and vals != []:
+                if isinstance(vals, list):
+                    m, s, _, _ = _stats(vals)
+                else:
+                    m, s = float(vals), 0.0
                 row += f"  {m:>7.2f} / {s:>5.2f}    "
             else:
                 row += f"  {'BRAK':>7}           "
@@ -264,8 +371,11 @@ def print_stability_table(snapshots: list[dict]) -> None:
             means = []
             for snap in snapshots:
                 vals = snap['data'].get(str(char_int), snap['data'].get(char_int, []))
-                if vals:
-                    means.append(_stats(vals)[0])
+                if vals is not None and vals != []:
+                    if isinstance(vals, list):
+                        means.append(_stats(vals)[0])
+                    else:
+                        means.append(float(vals))
             if len(means) >= 2:
                 delta = max(means) - min(means)
                 flag  = '  <<< REKALIBRACJA?' if delta > 3.0 else ''
@@ -400,8 +510,8 @@ def run_rssi_analysis(connect_fn, stream_fn, close_fn,
     if len(snaps_to_plot) >= 2:
         print_stability_table(snaps_to_plot)
 
-    print('\n  Generuje histogramy...')
-    out = plot_histograms(snaps_to_plot)
+    print('\n  Generuje wykresy radarowe...')
+    out = plot_radar_charts(snaps_to_plot)
     if out:
         print(f'  Wykres: {out}')
 
@@ -595,171 +705,22 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
                 row += f'  {"—":>12}'
         print(row)
 
-    # ── Wykres biegunowy (radar) — kształt odcisku radiowego ─────────────
-    angles_deg = np.array(sorted_degs, dtype=float)
-    angles_rad = np.deg2rad(angles_deg)
-    # Zamknij pętlę (dodaj pierwszy punkt na koniec)
-    angles_rad_closed = np.append(angles_rad, angles_rad[0])
-
-    def _estimate_direction(rssi_vals, angles):
-        """Ważona średnia kołowa — interpoluje kierunek beacona.
-
-        RSSI [dBm] → liniowa moc (10^(rssi/10)), użyta jako waga
-        na okręgu jednostkowym. atan2 zwraca kąt wypadkowy.
-        Rozdzielczość znacznie lepsza niż ±30° z argmax.
-        """
-        # Konwersja dBm → wagi liniowe (przesunięte, aby min ≈ 0)
-        rssi_np = np.array(rssi_vals, dtype=float)
-        # Przesunięcie tak, by najsłabszy → 0, najsilniejszy → max
-        shifted = rssi_np - rssi_np.min()
-        # Podniesienie do potęgi wzmacnia kontrast (silniejsze anteny ważą więcej)
-        weights = np.power(10.0, shifted / 10.0)
-        # Ważona średnia kołowa
-        sin_sum = np.sum(weights * np.sin(angles))
-        cos_sum = np.sum(weights * np.cos(angles))
-        est_rad = np.arctan2(sin_sum, cos_sum)
-        est_deg = np.rad2deg(est_rad) % 360
-        return est_rad, round(est_deg, 1)
-
-    n_selected = len(plot_data)
-
-    if n_selected <= 4:
-        # Pojedyncze porównanie — radar overlay
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={'projection': 'polar'})
-        ax.set_theta_zero_location('N')   # 0° na górze
-        ax.set_theta_direction(-1)         # zgodnie z ruchem wskazówek zegara
-
-        radar_plots_data = []
-
-        for pi, (label, avgs) in enumerate(plot_data):
-            vals = []
-            for deg in sorted_degs:
-                ch = deg_to_char[deg]
-                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
-                vals.append(float(v) if v is not None else -100.0)
-            vals_np = np.array(vals)
-            vals_closed = np.append(vals_np, vals_np[0])
-
-            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
-
-            color = _PALETTE[pi % len(_PALETTE)]
-            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
-            ax.plot(angles_rad_closed, vals_closed, 'o-', color=color,
-                    linewidth=2, markersize=5, label=label_with_dir, alpha=0.85)
-            ax.fill(angles_rad_closed, vals_closed, color=color, alpha=0.1)
-            
-            radar_plots_data.append((best_rad, best_deg, color))
-
-        ax.set_xticks(angles_rad)
-        ax.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=9)
-        ax.set_ylabel('RSSI [dBm]', fontsize=9, labelpad=20)
-        ax.set_title(f'Odciski radiowe — Beacon {beacon_id}\n'
-                     f'(Linia przerywana = szacowany kierunek beacona)',
-                     fontsize=12, pad=20)
-        
-        # Rysuj strzałki kierunku beacona
-        r_min, r_max = ax.get_ylim()
-        if r_max > r_min:
-            for best_rad, best_deg, color in radar_plots_data:
-                ax.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
-                ax.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
-                            arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=15))
-
-        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=9)
-        ax.grid(True, alpha=0.3)
-    else:
-        # Wiele punktów — heatmapa + radar wybranych
-        fig = plt.figure(figsize=(16, 8))
-
-        # Panel lewy: heatmapa
-        ax_heat = fig.add_subplot(121)
-        matrix = []
-        labels_list = []
-        for label, avgs in plot_data:
-            row = []
-            for deg in sorted_degs:
-                ch = deg_to_char[deg]
-                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
-                row.append(float(v) if v is not None else np.nan)
-            matrix.append(row)
-            labels_list.append(label)
-
-        matrix_np = np.array(matrix)
-        im = ax_heat.imshow(matrix_np, aspect='auto', cmap='RdYlBu_r',
-                            interpolation='nearest')
-        ax_heat.set_xticks(range(len(sorted_degs)))
-        ax_heat.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=8,
-                                rotation=45, ha='right')
-        ax_heat.set_yticks(range(len(labels_list)))
-        ax_heat.set_yticklabels(labels_list, fontsize=8)
-        ax_heat.set_xlabel('Kąt wiązki anteny ESPAR')
-        ax_heat.set_ylabel('Punkt kalibracyjny')
-        ax_heat.set_title(f'Mapa RSSI [dBm] — Beacon {beacon_id}', fontsize=11)
-        cbar = fig.colorbar(im, ax=ax_heat, shrink=0.8)
-        cbar.set_label('RSSI [dBm]', fontsize=9)
-
-        # Adnotacja wartości w komórkach (jeśli <20 punktów)
-        if len(labels_list) <= 20:
-            for yi in range(matrix_np.shape[0]):
-                for xi in range(matrix_np.shape[1]):
-                    v = matrix_np[yi, xi]
-                    if not np.isnan(v):
-                        ax_heat.text(xi, yi, f'{v:.0f}', ha='center', va='center',
-                                     fontsize=6, color='white' if v < -78 else 'black')
-
-        # Panel prawy: radar wybranych (max 4, co kwartał)
-        ax_radar = fig.add_subplot(122, projection='polar')
-        ax_radar.set_theta_zero_location('N')
-        ax_radar.set_theta_direction(-1)
-
-        # Wybierz max 4 równomiernie rozłożone
-        if n_selected > 4:
-            step = max(n_selected // 4, 1)
-            show_idx = list(range(0, n_selected, step))[:4]
-        else:
-            show_idx = list(range(n_selected))
-
-        radar_plots_data = []
-
-        for pi, si in enumerate(show_idx):
-            label, avgs = plot_data[si]
-            vals = []
-            for deg in sorted_degs:
-                ch = deg_to_char[deg]
-                v = avgs.get(str(ch)) if str(ch) in avgs else avgs.get(ch)
-                vals.append(float(v) if v is not None else -100.0)
-            vals_np = np.array(vals)
-            vals_closed = np.append(vals_np, vals_np[0])
-            
-            best_rad, best_deg = _estimate_direction(vals_np, angles_rad)
-
-            color = _PALETTE[pi % len(_PALETTE)]
-            label_with_dir = f"{label} (kierunek ≈{best_deg}°)"
-            ax_radar.plot(angles_rad_closed, vals_closed, 'o-', color=color,
-                          linewidth=2, markersize=4, label=label_with_dir, alpha=0.85)
-            ax_radar.fill(angles_rad_closed, vals_closed, color=color, alpha=0.08)
-            radar_plots_data.append((best_rad, best_deg, color))
-
-        ax_radar.set_xticks(angles_rad)
-        ax_radar.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=8)
-        ax_radar.set_title('Odciski radiowe (radar)\n(Linia przerywana = szacowany kierunek beacona)', fontsize=11, pad=15)
-        
-        # Rysuj strzałki kierunku beacona
-        r_min, r_max = ax_radar.get_ylim()
-        if r_max > r_min:
-            for best_rad, best_deg, color in radar_plots_data:
-                ax_radar.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
-                ax_radar.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
-                                  arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=12))
-
-        ax_radar.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=8)
-        ax_radar.grid(True, alpha=0.3)
-
-    fig.tight_layout()
-
+    # ── Wygeneruj wykresy radarowe ────────────────────────────────────────
     out_path = os.path.join(SNAPSHOTS_DIR, 'analiza_odciskow.png')
-    os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-    _show_plot(fig, out_path)
+    
+    selected_snaps = []
+    for idx in selected_idx:
+        typ, label, data = entries[idx]
+        if typ == 'mapa':
+            selected_snaps.append({
+                'label': label,
+                'beacon_id': beacon_id,
+                'data': data
+            })
+        elif typ == 'migawka':
+            selected_snaps.append(load_snapshot(data))
+            
+    plot_radar_charts(selected_snaps, out_path)
     print(f'\n  [OK] Wykres zapisano: {out_path}')
 
 
@@ -787,7 +748,7 @@ if __name__ == '__main__':
             loaded.append(load_snapshot(p))
         if len(loaded) >= 2:
             print_stability_table(loaded)
-        out = plot_histograms(loaded)
+        out = plot_radar_charts(loaded)
         if out:
             print(f'Wykres: {out}')
     else:
