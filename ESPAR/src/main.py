@@ -88,9 +88,35 @@ def main():
                         print("  [!] Nieprawidłowy wybór. Wpisz 'p' lub 's' (lub wciśnij Enter aby powrócić).")
             elif choice == "3":
                 viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
-                print("Otwieram mape z punktami kalibracyjnymi...")
+                
+                # Skanowanie aktywnych beaconów w otoczeniu
                 try:
-                    subprocess.run([sys.executable, viewer, "--view"], check=False)
+                    available = calibrator._scan_available_beacons()
+                except Exception as e:
+                    print(f"  [!] Błąd skanowania: {e}")
+                    available = [28]
+                
+                print("\n  Dostępne beacony w okolicy:")
+                for idx, bid in enumerate(available, 1):
+                    print(f"    {idx} - Beacon #{bid}")
+                
+                print(f"\n  Wybierz beacon do podglądu (wpisz numer 1-{len(available)} lub bezpośrednio ID beacona, domyślnie {available[0]}):")
+                ans = input("  Wybór -> ").strip()
+                
+                selected_beacon = available[0] if available else 28
+                if ans:
+                    try:
+                        val = int(ans)
+                        if 1 <= val <= len(available):
+                            selected_beacon = available[val - 1]
+                        else:
+                            selected_beacon = val
+                    except ValueError:
+                        print("  [!] Nieprawidłowy wybór. Używam domyślnego beacona.")
+                
+                print(f"Otwieram mape z punktami kalibracyjnymi dla Beacona #{selected_beacon}...")
+                try:
+                    subprocess.run([sys.executable, viewer, "--view", str(selected_beacon)], check=False)
                 except Exception as e:
                     print(f"[!] Błąd mapy: {e}")
             elif choice == "4":

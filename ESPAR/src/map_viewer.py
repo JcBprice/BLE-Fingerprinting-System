@@ -1130,7 +1130,8 @@ class MapWindow(QMainWindow):
                  calibrate_mode: bool = False, calib_label: str = '',
                  calib_beacons: list = None,
                  calib_target_packets: int = 100,
-                 grid_collect_mode: bool = False, grid_json_path: str = ''):
+                 grid_collect_mode: bool = False, grid_json_path: str = '',
+                 live_beacon_id: int = 28):
         super().__init__()
         
         self._grid_collect_mode = grid_collect_mode
@@ -1182,13 +1183,14 @@ class MapWindow(QMainWindow):
         self._calib_beacons    = calib_beacons or [{"id": 28, "x": 0.0, "y": 0.0}]
         self._calib_target_packets = calib_target_packets
         self._calib_rssi_accum = {}
+        self._live_beacon_id   = live_beacon_id
 
         if mark_origin_mode:
             self.setWindowTitle('ESPAR IPS — Zaznacz globalny narożnik budynku (0,0)')
         elif pick_mode:
             self.setWindowTitle('ESPAR IPS — Zaznacz lokalny origin sesji pomiarowej')
         elif show_points:
-            self.setWindowTitle('ESPAR IPS — Baza Punktów Kalibracyjnych')
+            self.setWindowTitle(f'ESPAR IPS — Baza Punktów Kalibracyjnych (Live Beacon #{live_beacon_id})')
         elif select_mode:
             self.setWindowTitle('ESPAR IPS — Wybierz punkty kalibracyjne do analizy')
         elif calibrate_mode:
@@ -1265,6 +1267,7 @@ class MapWindow(QMainWindow):
                 self._panel._btn_save_calib.clicked.connect(self._save_and_exit)
                 self._panel._btn_force_save.clicked.connect(self._force_save)
                 self._panel._btn_cancel_calib.clicked.connect(self.close)
+
         elif pick_mode or mark_origin_mode:
             self._canvas.position_picked.connect(self._on_picked)
             btn_label = ('Zatwierdź origin budynku' if mark_origin_mode
@@ -1767,6 +1770,7 @@ class MapWindow(QMainWindow):
         if self._live_thread is not None:
             return
         self._live_thread = LiveThread(self)
+        self._live_thread.BEACON_ID = getattr(self, '_live_beacon_id', 28)
         if self._calibrate_mode:
             self._live_thread.calibrate_mode = True
             self._live_thread.frame_received.connect(self._on_frame_received)
@@ -1888,9 +1892,9 @@ class LiveThread(QThread):
     status_msg = pyqtSignal(str)
     frame_received = pyqtSignal(int, int, float)  # (beacon_id, char_int, rssi)
 
-    WINDOW_SEC = 5.0     # czas okna zbierania danych
+    WINDOW_SEC = 7.0     # czas okna zbierania danych
     BEACON_ID  = 28
-    BLE_CHANNEL = 37
+    BLE_CHANNEL = None   # None = odbieraj ze wszystkich kanałów (37, 38, 39)
 
     def run(self):
         # Importy lokalne — moduły w tym samym katalogu
@@ -1933,10 +1937,7 @@ class LiveThread(QThread):
                 if self.isInterruptionRequested():
                     break
 
-                # Filtruj kanał 37 tylko w trybie pozycjonowania (nie-kalibracji).
-                # W trybie kalibracji przyjmujemy wszystkie kanały advertising (37, 38, 39),
-                # aby przyspieszyć zbieranie danych 3x.
-                if not is_calib and frame['ble_channel'] != self.BLE_CHANNEL:
+                if not is_calib and self.BLE_CHANNEL is not None and frame['ble_channel'] != self.BLE_CHANNEL:
                     continue
                 if frame['espar_char_int'] not in VALID_CHARS:
                     continue
@@ -2048,9 +2049,16 @@ if __name__ == '__main__':
             win.show()
             sys.exit(app.exec())
 
-        # --view : podgląd bazy punktów kalibracyjnych
+        # --view [beacon_id] : podgląd bazy punktów kalibracyjnych
         if '--view' in sys.argv:
-            win = MapWindow(show_points=True)
+            idx = sys.argv.index('--view')
+            beacon_id = 28
+            if idx + 1 < len(sys.argv):
+                try:
+                    beacon_id = int(sys.argv[idx + 1])
+                except ValueError:
+                    pass
+            win = MapWindow(show_points=True, live_beacon_id=beacon_id)
             win.show()
             sys.exit(app.exec())
 

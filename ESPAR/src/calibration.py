@@ -109,13 +109,21 @@ class Calibrator:
             )
             
             # Wyszukaj i sparsuj JSON z stdout
+            found_json = False
             for line in reversed(result.stdout.strip().splitlines()):
                 line = line.strip()
                 if line.startswith("{"):
                     try:
-                        return json.loads(line)
+                        data = json.loads(line)
+                        found_json = True
+                        return data
                     except Exception:
                         pass
+            
+            if not found_json:
+                print("  [!] Nie otrzymano poprawnych danych pomiarowych z GUI (anulowano lub wystąpił błąd).")
+                if result.stderr.strip():
+                    print(f"  [Debug] Logi błędów GUI:\n{result.stderr.strip()}")
         except Exception as e:
             print(f"[!] Błąd uruchamiania map_viewer: {e}")
         return None
@@ -932,8 +940,9 @@ class Calibrator:
         if not sock:
             return
 
+        beacons_list = [{"id": beacon_id, "x": x_global, "y": y_global}]
         try:
-            beacons = self._collect_fingerprint(sock, label, target_packets, x_global, y_global, beacon_id)
+            beacons = self._collect_fingerprint(sock, label, target_packets, beacons_list)
         except socket.timeout:
             print("\n[!] Timeout.")
             return
