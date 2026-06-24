@@ -54,8 +54,11 @@ def load_test_set() -> list:
     """Wczytuje zbiór testowy z test_set.json."""
     if not os.path.exists(TEST_SET_PATH):
         return []
-    with open(TEST_SET_PATH, encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        with open(TEST_SET_PATH, encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        return []
 
 
 def save_test_set(test_set: list) -> None:

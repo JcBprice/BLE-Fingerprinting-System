@@ -71,9 +71,9 @@ def parse_beacon_data(json_line: str) -> dict | None:
         except ValueError:
             return None  # uszkodzone pola numeryczne
 
-        # Filtruj kanały BLE (tylko poprawne kanały advertising 37, 38, 39)
-        if ble_chan not in (37, 38, 39):
-            return None
+        # Filtrowanie kanałów BLE wyłączone na prośbę użytkownika (wszystkie beacony na ch 37, ale formaty mogą być rozjechane)
+        # if ble_chan not in (37, 38, 39):
+        #     return None
 
         # Filtruj anomalne/uszkodzone wartości RSSI (np. szum pomiarowy powyżej -10 lub poniżej -110 dBm)
         rssi_dbm = -1 * rssi_abs

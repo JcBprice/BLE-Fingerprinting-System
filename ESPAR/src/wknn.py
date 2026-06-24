@@ -81,12 +81,47 @@ def load_radio_map(path: str = RADIO_MAP_PATH) -> list:
     """
     if not os.path.exists(path):
         return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        return []
     # Stary format — słownik zamiast listy (brak współrzędnych pozycji)
     if isinstance(data, dict):
         return []
-    return data
+        
+    normalized_data = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        if "beacons" in entry:
+            # Old format or already nested format
+            normalized_data.append(entry)
+        elif "beacon_id" in entry and ("average_rssi" in entry or "normalized_rssi" in entry):
+            # Flat format - convert to nested format
+            bid_str = str(entry.get("beacon_id"))
+            nested_entry = {
+                "label": entry.get("label", ""),
+                "x_m": entry.get("x_m", 0.0),
+                "y_m": entry.get("y_m", 0.0),
+                "beacons": {
+                    bid_str: {
+                        "avg": entry.get("average_rssi", {}),
+                        "norm": entry.get("normalized_rssi", {})
+                    }
+                }
+            }
+            if "x_local" in entry:
+                nested_entry["_local"] = {
+                    "x": entry["x_local"],
+                    "y": entry.get("y_local", 0.0),
+                    "session": entry.get("origin_label", "")
+                }
+            normalized_data.append(nested_entry)
+        else:
+            normalized_data.append(entry)
+            
+    return normalized_data
 
 
 def save_radio_map(fingerprints: list, path: str = RADIO_MAP_PATH) -> None:
@@ -133,15 +168,18 @@ def normalize_rssi(avg_rssi: dict) -> dict:
 def _get_directions(radio_map: list, beacon_id: int) -> list:
     """
     Zwraca posortowaną listę wszystkich kluczy konfiguracji ESPAR (char_int
-    jako stringi), które występują w mapie radiowej dla danego beacona.
+    jako stringi), które występują w mapie radiowej.
 
-    Używane do budowania spójnych wektorów cech o jednakowej kolejności.
+    Zbiera konfiguracje anteny ze WSZYSTKICH wpisów i beakonów, ponieważ
+    wzorzec RSSI anteny ESPAR zależy od kierunku sygnału, nie od konkretnego
+    nadajnika BLE. Odciski z różnych beaconów są wymienne.
     """
     dirs = set()
-    bid = str(beacon_id)
     for fp in radio_map:
-        avg_dict = fp.get("beacons", {}).get(bid, {}).get("avg", {})
-        dirs.update(k for k in avg_dict.keys() if k not in ("0", "4095"))
+        beacons = fp.get("beacons", {})
+        for bid_str, bid_data in beacons.items():
+            avg_dict = bid_data.get("avg", {})
+            dirs.update(k for k in avg_dict.keys() if k not in ("0", "4095"))
     return sorted(dirs, key=lambda x: int(x))
 
 
@@ -149,18 +187,31 @@ def _fp_vector(fp: dict, beacon_id: int, directions: list) -> list:
     """
     Buduje wektor RSSI dla jednego punktu kalibracyjnego.
 
+    Preferuje dane dla konkretnego beacon_id jeśli są dostępne w tym wpisie.
+    W przeciwnym razie używa danych z pierwszego dostępnego beacona
+    (odciski z różnych beaconów są wymienne w systemie ESPAR).
+
     Dla brakujących konfiguracji przyjmuje wartość -95.0 dBm (typowy dolny
     próg czułości odbiornika BLE — kara za brak danych).
 
     Args:
         fp:         Punkt kalibracyjny z mapy radiowej.
-        beacon_id:  Numer beacona.
+        beacon_id:  Numer beacona BLE (preferowany, z fallback na dowolny).
         directions: Posortowana lista kluczy konfiguracji (z _get_directions).
 
     Returns:
         Lista float w kolejności zgodnej z 'directions'.
     """
-    avg = fp.get("beacons", {}).get(str(beacon_id), {}).get("avg", {})
+    beacons = fp.get("beacons", {})
+    if not beacons:
+        return [-95.0] * len(directions)
+    bid_str = str(beacon_id)
+    if bid_str in beacons:
+        avg = beacons[bid_str].get("avg", {})
+    else:
+        # Fallback: użyj pierwszego dostępnego beacona (wzorzec zależy od pozycji)
+        first_bid = next(iter(beacons))
+        avg = beacons[first_bid].get("avg", {})
     return [float(avg.get(d, -95.0)) for d in directions]
 
 
@@ -300,7 +351,12 @@ def wknn_estimate(window_data: dict, radio_map: list,
     # W obu przypadkach sortujemy rosnąco i wybieramy K pierwszych.
     dists = []
     for fp in radio_map:
-        # Budujemy wektor odcisków radiowych tylko dla konfiguracji obecnych w oknie czasowym
+        # Porównuj ze WSZYSTKIMI punktami — wzorzec RSSI anteny ESPAR zależy
+        # od kierunku do źródła sygnału, nie od konkretnego nadajnika BLE.
+        # Dzięki temu mapa z różnych beaconów pokrywa pełen zakres X i Y.
+        if "beacons" not in fp or not fp["beacons"]:
+            continue
+        # Budujemy wektor odcisków radiowych (preferuje pasujący beacon, fallback na dostępny)
         fp_vec = _fp_vector(fp, beacon_id, valid_dirs)
         if DISTANCE_METRIC == 'euclidean':
             d = _euclidean_distance(live_vec, fp_vec)

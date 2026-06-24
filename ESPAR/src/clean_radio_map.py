@@ -14,8 +14,12 @@ RADIO_MAP_PATH = os.path.normpath(
 
 INVALID_CHARS = {"0", "4095"}  # klucze do usunięcia (string, bo JSON klucze są stringami)
 
-with open(RADIO_MAP_PATH, "r", encoding="utf-8") as f:
-    radio_map = json.load(f)
+try:
+    with open(RADIO_MAP_PATH, "r", encoding="utf-8") as f:
+        radio_map = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError, ValueError):
+    print(f"[!] Błąd wczytywania lub brak pliku mapy radiowej ({RADIO_MAP_PATH}).")
+    radio_map = []
 
 removed_total = 0
 

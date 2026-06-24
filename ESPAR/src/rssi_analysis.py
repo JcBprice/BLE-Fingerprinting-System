@@ -542,8 +542,11 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
     rmap_path = os.path.join(DATA_DIR, 'radio_map.json')
     radio_points: list[dict] = []
     if os.path.exists(rmap_path):
-        with open(rmap_path, encoding='utf-8') as f:
-            radio_points = json.load(f)
+        try:
+            with open(rmap_path, encoding='utf-8') as f:
+                radio_points = json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            radio_points = []
 
     # 2) Istniejące migawki RSSI
     snapshots = list_snapshots()

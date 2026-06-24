@@ -274,11 +274,19 @@ class Calibrator:
 
     def _upsert_point(self, existing: list, label: str, point: dict) -> None:
         """Dodaje lub aktualizuje punkt w liście mapy radiowej."""
+        x = point.get("x_m")
+        y = point.get("y_m")
+        bids = set(point.get("beacons", {}).keys())
+
         for i, fp in enumerate(existing):
-            if fp.get("label") == label:
+            # Zbieżność współrzędnych (tolerancja 1mm) i identyczność zestawu beaconów
+            if (fp.get("x_m") is not None and abs(fp["x_m"] - x) < 0.001 and
+                fp.get("y_m") is not None and abs(fp["y_m"] - y) < 0.001 and
+                "beacons" in fp and set(fp["beacons"].keys()) == bids):
                 existing[i] = point
                 return
         existing.append(point)
+
 
     def _save_fingerprint_points(self, existing: list, label: str,
                                   x_local: float, y_local: float,
@@ -303,7 +311,7 @@ class Calibrator:
 
                 bx_global = round(ox + bx_local, 4)
                 by_global = round(oy + by_local, 4)
-                b_label = f"{label}_b{bid}"
+                b_label = f"{label}_{bid}"
 
                 new_point = {
                     "label":   b_label,
@@ -311,9 +319,6 @@ class Calibrator:
                     "y_m":     by_global,
                     "_local":  {"x": bx_local, "y": by_local,
                                 "session": session_label},
-                    "_tripod": {"base_label": label, "beacon_id": bid,
-                                "spacing_m": tripod["spacing_m"],
-                                "angle_deg": tripod["angle_deg"]},
                     "beacons": {bid_str: beacons[bid_str]},
                 }
                 self._upsert_point(existing, b_label, new_point)

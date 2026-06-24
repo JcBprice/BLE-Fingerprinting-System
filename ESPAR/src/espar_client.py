@@ -1,13 +1,53 @@
 import socket
 import time
+import os
+import json
 
 class EsparClient:
     """Zarządza połączeniem TCP z anteną ESPAR."""
     
-    def __init__(self, host: str = "153.19.49.102", port: int = 8893, timeout: int = 10):
+    def __init__(self, host: str = "153.19.49.102", port: int = None, timeout: int = 10):
         self.host = host
-        self.port = port
         self.timeout = timeout
+        
+        # Domyślny port
+        default_port = 8894
+        
+        # Ścieżka do pliku konfiguracyjnego w folderze data
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_path = os.path.normpath(os.path.join(self.script_dir, "..", "data", "espar_config.json"))
+        
+        if port is not None:
+            self.port = port
+        else:
+            self.port = self.load_port_from_config(default_port)
+
+    def load_port_from_config(self, default_port: int) -> int:
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    return int(cfg.get("port", default_port))
+            except Exception:
+                pass
+        return default_port
+
+    def save_port_to_config(self, port: int) -> None:
+        try:
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+            cfg = {}
+            if os.path.exists(self.config_path):
+                try:
+                    with open(self.config_path, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                except Exception:
+                    pass
+            cfg["port"] = port
+            cfg["host"] = self.host
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"[!] Błąd zapisu konfiguracji portu: {e}")
 
     def connect_and_start(self) -> socket.socket | None:
         """Nawiązuje połączenie TCP z serwerem ESPAR i wysyła komendę 'start'."""

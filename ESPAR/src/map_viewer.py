@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel,
     QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy,
     QPushButton, QStatusBar, QCheckBox, QProgressBar,
+    QLineEdit, QSpinBox,
 )
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import (
@@ -121,9 +122,11 @@ class MapCanvas(QWidget):
 
     def __init__(self, svg_path: str, pick_mode: bool = False,
                  mark_origin_mode: bool = False, select_mode: bool = False,
+                 test_collect_mode: bool = False,
                  existing_points=None, session_origin=None, parent=None):
         super().__init__(parent)
         self._existing_points = existing_points or []
+        self._test_points = []
         self._session_origin  = session_origin   # (x_m, y_m) lub None
         self.setMinimumSize(640, 360)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -131,11 +134,16 @@ class MapCanvas(QWidget):
         self._pick_mode        = pick_mode
         self._mark_origin_mode = mark_origin_mode
         self._select_mode      = select_mode
+        self._test_collect_mode = test_collect_mode
         self._selected_labels  = set()
-        if pick_mode or mark_origin_mode:
+        if pick_mode or mark_origin_mode or test_collect_mode:
             self.setCursor(Qt.CursorShape.CrossCursor)
-            tip = ('Kliknij narożnik budynku (globalny 0,0)' if mark_origin_mode
-                   else 'Kliknij miejsce gdzie stoi statyw / lokalny origin')
+            if mark_origin_mode:
+                tip = 'Kliknij narożnik budynku (globalny 0,0)'
+            elif pick_mode:
+                tip = 'Kliknij miejsce gdzie stoi statyw / lokalny origin'
+            else:
+                tip = 'Kliknij miejsce, aby zaznaczyć prawdziwe położenie punktu testowego'
             self.setToolTip(tip)
         elif select_mode:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -284,8 +292,8 @@ class MapCanvas(QWidget):
                     self.setCursor(Qt.CursorShape.ClosedHandCursor)
                     return
 
-            # Tryb pick / mark_origin — każdy klik wybiera pozycję
-            if (self._pick_mode or self._mark_origin_mode) and r.width() > 0:
+            # Tryb pick / mark_origin / test_collect — każdy klik wybiera pozycję
+            if (self._pick_mode or self._mark_origin_mode or getattr(self, '_test_collect_mode', False)) and r.width() > 0:
                 svg_x = (wx - r.x()) / r.width()  * self._vb_w
                 svg_y = (wy - r.y()) / r.height() * self._vb_h
                 self._picked_svg_x = svg_x
@@ -370,7 +378,7 @@ class MapCanvas(QWidget):
 
         if e.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton):
             self._drag_start = None
-            if self._pick_mode or self._mark_origin_mode:
+            if self._pick_mode or self._mark_origin_mode or getattr(self, '_test_collect_mode', False):
                 self.setCursor(Qt.CursorShape.CrossCursor)
             elif self._select_mode:
                 self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -443,6 +451,22 @@ class MapCanvas(QWidget):
                         p.setFont(QFont('Segoe UI', 8, QFont.Weight.Bold))
                         p.drawText(int(wp.x()) + 8, int(wp.y()) + 4, lbl)
 
+        # Rysuj istniejące punkty testowe (fioletowe kropki)
+        if self._show_fingerprints and getattr(self, '_test_points', None):
+            p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            for pt in self._test_points:
+                x_m, y_m = pt.get('x_true'), pt.get('y_true')
+                lbl = pt.get('label', '')
+                if x_m is not None and y_m is not None:
+                    sx, sy = physical_to_svg(x_m, y_m)
+                    wp = self._svg_to_widget(sx, sy)
+                    p.setBrush(QBrush(QColor('#c084fc'))) # fioletowy
+                    p.setPen(QPen(Qt.GlobalColor.white, 1))
+                    p.drawEllipse(wp, 5, 5)
+                    p.setPen(QPen(QColor('#e9d5ff')))
+                    p.setFont(QFont('Segoe UI', 8, QFont.Weight.Bold))
+                    p.drawText(int(wp.x()) + 8, int(wp.y()) + 4, lbl)
+
         # Rysuj zaplanowane punkty kalibracji siatkowej (szare kropki dla wszystkich odcisków)
         grid_data = getattr(self, '_grid_data', None)
         if grid_data and grid_data.get('points'):
@@ -500,10 +524,21 @@ class MapCanvas(QWidget):
             p.setFont(QFont('Segoe UI', 8, QFont.Weight.Bold))
             p.drawText(int(sp.x()) + 8, int(sp.y()) - 4, 'origin sesji')
 
-        # Tryb PICK: rysuj zielony celownik w wybranym miejscu
-        if self._pick_mode:
+        # Tryb PICK / TEST_COLLECT: rysuj zielony celownik w wybranym miejscu
+        if self._pick_mode or getattr(self, '_test_collect_mode', False):
             if self._picked_svg_x is not None:
                 centre = self._svg_to_widget(self._picked_svg_x, self._picked_svg_y)
+                
+                if getattr(self, '_test_collect_mode', False):
+                    # W trybie test_collect rysuj również radar chart w tym miejscu
+                    self._draw_radar_chart(p, centre)
+                    
+                    # Narysuj etykietę zbieranego punktu testowego nad radarem
+                    lbl = f"Test Pt: {getattr(self, '_calib_label', 'test_pt')}"
+                    p.setFont(QFont('Segoe UI', 9, QFont.Weight.Bold))
+                    p.setPen(QPen(QColor('#c084fc'))) # fioletowy
+                    p.drawText(int(centre.x()) - 50, int(centre.y()) - self._radar_radius_px - 10, lbl)
+
                 CR = 14
                 pen = QPen(QColor('#22c55e'), 2)
                 p.setPen(pen)
@@ -958,6 +993,241 @@ class InfoPanel(QFrame):
         except RuntimeError:
             pass
 
+    def setup_test_collect_mode(self, label="test_pt01", beacon_id=28, target_packets=100):
+        # Usuń stare widgety z układu bocznego panelu
+        while self.layout().count():
+            item = self.layout().takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+                
+        lay = self.layout()
+        
+        # Tytuł sekcji
+        title = QLabel('📡  ESPAR IPS')
+        title.setFont(QFont('Segoe UI', 11, QFont.Weight.Bold))
+        title.setStyleSheet(f'color: {C_ACCENT.name()};')
+        lay.addWidget(title)
+        lay.addSpacing(4)
+
+        sub = QLabel('Punkty Testowe (Ground Truth)')
+        sub.setFont(QFont('Segoe UI', 8))
+        sub.setStyleSheet(f'color: {C_MUTED.name()};')
+        lay.addWidget(sub)
+
+        lay.addSpacing(15)
+        lay.addWidget(self._divider())
+        lay.addSpacing(10)
+
+        # Sekcja: Etykieta punktu (Editable!)
+        lay.addWidget(self._section_label('ETYKIETA PUNKTU'))
+        lay.addSpacing(4)
+        self._edit_label = QLineEdit(label)
+        self._edit_label.setStyleSheet(f"""
+            QLineEdit {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 4px;
+                padding: 6px;
+                font-family: 'Segoe UI';
+                font-size: 12px;
+            }}
+        """)
+        lay.addWidget(self._edit_label)
+        lay.addSpacing(10)
+
+        # Sekcja: Beacon ID
+        lay.addWidget(self._section_label('BEACON ID'))
+        lay.addSpacing(4)
+        self._spin_beacon = QSpinBox()
+        self._spin_beacon.setRange(1, 1000)
+        self._spin_beacon.setValue(beacon_id)
+        self._spin_beacon.setStyleSheet(f"""
+            QSpinBox {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 4px;
+                padding: 6px;
+                font-family: 'Segoe UI';
+                font-size: 12px;
+            }}
+        """)
+        lay.addWidget(self._spin_beacon)
+        lay.addSpacing(10)
+
+        # Sekcja: Pakiety
+        lay.addWidget(self._section_label('PAKIETY NA BEACON'))
+        lay.addSpacing(4)
+        self._spin_packets = QSpinBox()
+        self._spin_packets.setRange(1, 10000)
+        self._spin_packets.setValue(target_packets)
+        self._spin_packets.setStyleSheet(f"""
+            QSpinBox {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 4px;
+                padding: 6px;
+                font-family: 'Segoe UI';
+                font-size: 12px;
+            }}
+        """)
+        lay.addWidget(self._spin_packets)
+        lay.addSpacing(10)
+
+        # Sekcja: Prawdziwa pozycja (odczyt z kliknięcia)
+        lay.addWidget(self._section_label('PRAWDZIWA POZYCJA'))
+        lay.addSpacing(4)
+        self._lbl_coords = QLabel("Kliknij na mapie...")
+        self._lbl_coords.setFont(QFont('JetBrains Mono', 10))
+        self._lbl_coords.setStyleSheet(f'color: {C_TEXT.name()};')
+        lay.addWidget(self._lbl_coords)
+        lay.addSpacing(10)
+
+        lay.addWidget(self._divider())
+        lay.addSpacing(10)
+
+        # Sekcja: Postęp
+        lay.addWidget(self._section_label('POSTĘP ZBIERANIA'))
+        lay.addSpacing(6)
+        self._lbl_progress = QLabel("Wybierz pozycję i wciśnij Start")
+        self._lbl_progress.setFont(QFont('Segoe UI', 9))
+        self._lbl_progress.setStyleSheet(f'color: {C_TEXT.name()};')
+        lay.addWidget(self._lbl_progress)
+        lay.addSpacing(6)
+
+        self._progress_bar = QProgressBar()
+        self._progress_bar.setRange(0, 100)
+        self._progress_bar.setValue(0)
+        self._progress_bar.setFixedHeight(8)
+        self._progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                background: {C_PANEL2.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 4px;
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background: {C_SUCCESS.name()};
+                border-radius: 3px;
+            }}
+        """)
+        lay.addWidget(self._progress_bar)
+
+        lay.addSpacing(15)
+        lay.addWidget(self._divider())
+        lay.addSpacing(10)
+
+        # Sekcja: Akcje
+        lay.addWidget(self._section_label('AKCJE'))
+        lay.addSpacing(8)
+
+        # Przycisk start
+        self._btn_start_collect = QPushButton("Rozpocznij zbieranie")
+        self._btn_start_collect.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_ACCENT.name()};
+                color: white;
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: #2563eb;
+            }}
+            QPushButton:disabled {{
+                background: #1e293b;
+                color: #64748b;
+                border: 1px solid #334155;
+            }}
+        """)
+        self._btn_start_collect.setEnabled(False) # Dopóki nie kliknie na mapie
+        lay.addWidget(self._btn_start_collect)
+        lay.addSpacing(8)
+
+        # Przycisk Zapisz
+        self._btn_save_calib = QPushButton('Zapisz odcisk')
+        self._btn_save_calib.setEnabled(False)
+        self._btn_save_calib.setStyleSheet(
+            'QPushButton { background: #1e293b; color: #64748b; '
+            'border: 1px solid #334155; border-radius: 5px; padding: 10px; font-size: 12px; font-weight: bold; }'
+        )
+        lay.addWidget(self._btn_save_calib)
+        lay.addSpacing(8)
+
+        # Przycisk powtórz
+        self._btn_repeat = QPushButton('Powtórz pomiar')
+        self._btn_repeat.setEnabled(False)
+        self._btn_repeat.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background: {C_BORDER.name()};
+                border-color: {C_ACCENT.name()};
+            }}
+            QPushButton:disabled {{
+                background: #1e293b;
+                color: #64748b;
+                border: 1px solid #334155;
+            }}
+        """)
+        lay.addWidget(self._btn_repeat)
+        lay.addSpacing(8)
+
+        # Przycisk kolejny
+        self._btn_next = QPushButton('Kolejny punkt')
+        self._btn_next.setEnabled(False)
+        self._btn_next.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background: {C_BORDER.name()};
+                border-color: {C_ACCENT.name()};
+            }}
+            QPushButton:disabled {{
+                background: #1e293b;
+                color: #64748b;
+                border: 1px solid #334155;
+            }}
+        """)
+        lay.addWidget(self._btn_next)
+        lay.addSpacing(8)
+
+        # Przycisk Zamknij / Zakończ
+        self._btn_cancel_calib = QPushButton('Zakończ')
+        self._btn_cancel_calib.setStyleSheet("""
+            QPushButton {
+                background: #991b1b;
+                color: #fca5a5;
+                border: 1px solid #7f1d1d;
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: #b91c1c;
+            }
+        """)
+        lay.addWidget(self._btn_cancel_calib)
+
+        lay.addStretch()
+
     def setup_calibration_mode(self, label, calib_beacons, target_packets=100):
         # Usuń stare widgety z układu bocznego panelu
         while self.layout().count():
@@ -1131,20 +1401,25 @@ class MapWindow(QMainWindow):
                  calib_beacons: list = None,
                  calib_target_packets: int = 100,
                  grid_collect_mode: bool = False, grid_json_path: str = '',
-                 live_beacon_id: int = 28):
+                 live_beacon_id: int = 28,
+                 test_collect_mode: bool = False):
         super().__init__()
         
         self._grid_collect_mode = grid_collect_mode
         self._grid_json_path = grid_json_path
         self._grid_data = None
         self._grid_idx = 0
-        self._collecting_active = True
+        self._collecting_active = not (grid_collect_mode or test_collect_mode)
         
         if self._grid_collect_mode:
             calibrate_mode = True
             if os.path.exists(self._grid_json_path):
-                with open(self._grid_json_path, 'r', encoding='utf-8') as f:
-                    self._grid_data = json.load(f)
+                try:
+                    with open(self._grid_json_path, 'r', encoding='utf-8') as f:
+                        self._grid_data = json.load(f)
+                except Exception as e:
+                    print(f"[!] Błąd wczytywania grid JSON: {e}", file=sys.stderr)
+                    self._grid_data = {}
                 if self._grid_data and self._grid_data.get('points'):
                     pt = self._grid_data['points'][0]
                     calib_label = pt['label']
@@ -1154,23 +1429,36 @@ class MapWindow(QMainWindow):
 
         # Wczytaj istniejące punkty kalibracyjne do wyświetlenia
         existing_points = []
-        if pick_mode or show_points or mark_origin_mode or select_mode:
+        if pick_mode or show_points or mark_origin_mode or select_mode or test_collect_mode:
             try:
-                radio_path = os.path.join(_DATA_DIR, 'radio_map.json')
-                if os.path.exists(radio_path):
-                    with open(radio_path, encoding='utf-8') as f:
-                        existing_points = json.load(f)
+                from wknn import load_radio_map
+                existing_points = load_radio_map()
             except Exception as e:
                 print(f"[!] Błąd wczytywania radio_map.json: {e}", file=sys.stderr)
 
+        # Wczytaj istniejące punkty testowe
+        test_points = []
+        if test_collect_mode:
+            try:
+                from validate import load_test_set
+                test_points = load_test_set()
+            except Exception as e:
+                print(f"[!] Błąd wczytywania test_set.json: {e}", file=sys.stderr)
+
         # Wczytaj origin aktywnej sesji (żółty marker)
         session_origin = None
+        self._session_ox = 0.0
+        self._session_oy = 0.0
+        self._session_label = 'unknown'
         sess_path = os.path.join(_DATA_DIR, 'session.json')
         if os.path.exists(sess_path):
             try:
                 with open(sess_path, encoding='utf-8') as f:
                     s = json.load(f)
                 session_origin = (s['origin_x_m'], s['origin_y_m'])
+                self._session_ox = s['origin_x_m']
+                self._session_oy = s['origin_y_m']
+                self._session_label = s['origin_label']
             except Exception:
                 pass
 
@@ -1179,6 +1467,7 @@ class MapWindow(QMainWindow):
         self._show_points      = show_points
         self._select_mode      = select_mode
         self._calibrate_mode   = calibrate_mode
+        self._test_collect_mode = test_collect_mode
         self._calib_label      = calib_label
         self._calib_beacons    = calib_beacons or [{"id": 28, "x": 0.0, "y": 0.0}]
         self._calib_target_packets = calib_target_packets
@@ -1195,6 +1484,8 @@ class MapWindow(QMainWindow):
             self.setWindowTitle('ESPAR IPS — Wybierz punkty kalibracyjne do analizy')
         elif calibrate_mode:
             self.setWindowTitle(f'ESPAR IPS — Wizualna Kalibracja: {calib_label}')
+        elif test_collect_mode:
+            self.setWindowTitle('ESPAR IPS — Graficzne Zbieranie Punktów Testowych')
         else:
             self.setWindowTitle('ESPAR IPS — Mapa Pozycjonowania')
         self.resize(1300, 740)
@@ -1217,8 +1508,10 @@ class MapWindow(QMainWindow):
         self._canvas = MapCanvas(svg, pick_mode=pick_mode,
                                  mark_origin_mode=mark_origin_mode,
                                  select_mode=select_mode,
+                                 test_collect_mode=test_collect_mode,
                                  existing_points=existing_points,
                                  session_origin=session_origin)
+        self._canvas._test_points = test_points
         root.addWidget(self._canvas)
 
         # Connect buttons
@@ -1237,6 +1530,8 @@ class MapWindow(QMainWindow):
             msg = 'Kliknij na mapie miejsce gdzie stoi statyw  |  F: dopasuj  |  Scroll: zoom'
         elif calibrate_mode:
             msg = 'Zbieranie ramek…  |  Przeciągnij radar lewym klawiszem  |  F: dopasuj'
+        elif test_collect_mode:
+            msg = 'Zaznacz myszką prawdziwą pozycję na mapie i kliknij Rozpocznij zbieranie'
         self._sb.showMessage(msg)
 
         # Setup layout based on mode
@@ -1267,6 +1562,19 @@ class MapWindow(QMainWindow):
                 self._panel._btn_save_calib.clicked.connect(self._save_and_exit)
                 self._panel._btn_force_save.clicked.connect(self._force_save)
                 self._panel._btn_cancel_calib.clicked.connect(self.close)
+
+        elif getattr(self, '_test_collect_mode', False):
+            self._panel.setup_test_collect_mode("test_pt01", self._live_beacon_id, self._calib_target_packets)
+            self._canvas._test_collect_mode = True
+            
+            # Podłącz przyciski testowe
+            self._panel._btn_start_collect.clicked.connect(self._start_test_collect)
+            self._panel._btn_save_calib.clicked.connect(self._save_test_point)
+            self._panel._btn_repeat.clicked.connect(self._repeat_test_collect)
+            self._panel._btn_next.clicked.connect(self._next_test_point)
+            self._panel._btn_cancel_calib.clicked.connect(self.close)
+            
+            self._canvas.position_picked.connect(self._on_picked)
 
         elif pick_mode or mark_origin_mode:
             self._canvas.position_picked.connect(self._on_picked)
@@ -1345,6 +1653,9 @@ class MapWindow(QMainWindow):
                 self._panel._btn_cancel_calib.clicked.connect(self.close)
                 # Automatycznie uruchom zbieranie
                 self._start_live()
+        elif getattr(self, '_test_collect_mode', False):
+            # Automatycznie uruchom zbieranie dla punktów testowych
+            self._start_live()
         else:
             # Podłącz checkboxy
             self._panel._chk_beacons.toggled.connect(self._on_toggle_beacons)
@@ -1363,6 +1674,17 @@ class MapWindow(QMainWindow):
         W trybie pick:        a=x_m,   b=y_m   (metry fizyczne).
         """
         self._picked = (a, b)
+        if getattr(self, '_test_collect_mode', False):
+            self._panel._lbl_coords.setText(f"X = {a:.3f} m\nY = {b:.3f} m")
+            self._panel._btn_start_collect.setEnabled(True)
+            self._sb.showMessage(f"Wybrano pozycję: X={a:.3f} m, Y={b:.3f} m. Wciśnij 'Rozpocznij zbieranie'.")
+            
+            # Zaktualizuj położenie radaru na mapie na wybraną pozycję testową
+            sx, sy = physical_to_svg(a, b)
+            self._canvas._radar_center_svg = QPointF(sx, sy)
+            self._canvas.update()
+            return
+
         if self._mark_origin_mode:
             self._sb.showMessage(
                 f'Narożnik budynku: SVG=({a:.1f}, {b:.1f})  —  '
@@ -1394,10 +1716,163 @@ class MapWindow(QMainWindow):
             print(json.dumps({'x_m': a, 'y_m': b, 'picked': True}), flush=True)
         self.close()
 
+    def _start_test_collect(self):
+        if self._picked is None:
+            return
+        
+        self._calib_target_packets = self._panel._spin_packets.value()
+        self._test_beacon_id = self._panel._spin_beacon.value()
+        self._calib_beacons = [{"id": self._test_beacon_id, "x": self._picked[0], "y": self._picked[1]}]
+        self._canvas._calib_beacons = self._calib_beacons
+        self._canvas._calib_target_packets = self._calib_target_packets
+        self._canvas._calib_label = self._panel._edit_label.text().strip() or "test_pt"
+        self._canvas._visible_radar_beacons = {self._test_beacon_id, str(self._test_beacon_id)}
+        
+        self._calib_rssi_accum = {}
+        self._canvas._radar_rssi_data = {}
+        self._canvas.set_radar_data({})
+        self._collecting_active = True
+        
+        self._panel._edit_label.setEnabled(False)
+        self._panel._spin_beacon.setEnabled(False)
+        self._panel._spin_packets.setEnabled(False)
+        self._panel._btn_start_collect.setEnabled(False)
+        self._panel._btn_start_collect.setText("Zbieranie...")
+        self._panel._btn_save_calib.setEnabled(False)
+        self._panel._btn_repeat.setEnabled(False)
+        self._panel._btn_next.setEnabled(False)
+        
+        self._panel._lbl_progress.setText("Rozpoczęto zbieranie...")
+        
+        if self._live_thread is None or not self._live_thread.isRunning():
+            self._start_live()
+
+    def _save_test_point(self):
+        result = {}
+        target_pkts = self._calib_target_packets
+        bid_str = str(self._test_beacon_id)
+        
+        chars_data = self._calib_rssi_accum.get(bid_str, {})
+        avg = {}
+        for ch, values in chars_data.items():
+            if not values:
+                continue
+            trimmed = values[:target_pkts]
+            avg[str(ch)] = round(sum(trimmed) / len(trimmed), 2)
+            
+        if not avg:
+            self._sb.showMessage("Brak danych do zapisu!")
+            return
+            
+        mn, mx = min(avg.values()), max(avg.values())
+        if mx > mn:
+            norm = {ch: round((v - mn) / (mx - mn), 4) for ch, v in avg.items()}
+        else:
+            norm = {ch: 0.0 for ch in avg}
+            
+        beacons_data = {
+            bid_str: {
+                "avg": avg,
+                "norm": norm
+            }
+        }
+        
+        # Oblicz współrzędne lokalne
+        x_global = round(self._picked[0], 4)
+        y_global = round(self._picked[1], 4)
+        
+        ox = getattr(self, '_session_ox', 0.0)
+        oy = getattr(self, '_session_oy', 0.0)
+        sess_label = getattr(self, '_session_label', 'unknown')
+        
+        x_local = round(x_global - ox, 4)
+        y_local = round(y_global - oy, 4)
+        
+        label = self._panel._edit_label.text().strip() or "test_pt"
+        
+        new_point = {
+            "label":   label,
+            "x_true":  x_global,
+            "y_true":  y_global,
+            "_local":  {"x": x_local, "y": y_local, "session": sess_label},
+            "beacons": beacons_data,
+        }
+        
+        # Zapisz do test_set.json
+        from validate import load_test_set, save_test_set
+        existing = [tp for tp in load_test_set() if tp.get("label") != label]
+        existing.append(new_point)
+        save_test_set(existing)
+        
+        self._sb.showMessage(f"Zapisano punkt testowy '{label}'! Razem: {len(existing)}")
+        self._panel._lbl_progress.setText(f"Zapisano: {label} ({x_global}, {y_global}) m")
+        
+        # Odblokuj przyciski powtórzenia i kolejnego
+        self._panel._btn_save_calib.setEnabled(False)
+        self._panel._btn_repeat.setEnabled(True)
+        self._panel._btn_next.setEnabled(True)
+        
+        # Odśwież punkty na mapie
+        self._canvas._test_points = existing
+        self._canvas.update()
+
+    def _repeat_test_collect(self):
+        self._panel._edit_label.setEnabled(True)
+        self._panel._spin_beacon.setEnabled(True)
+        self._panel._spin_packets.setEnabled(True)
+        self._panel._btn_start_collect.setEnabled(True)
+        self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
+        self._panel._btn_repeat.setEnabled(False)
+        self._panel._btn_next.setEnabled(False)
+        self._panel._btn_save_calib.setEnabled(False)
+        self._panel._lbl_progress.setText("Wciśnij Start, aby powtórzyć")
+        self._panel._progress_bar.setValue(0)
+        self._collecting_active = False
+        self._calib_rssi_accum = {}
+        self._canvas._radar_rssi_data = {}
+        self._canvas.set_radar_data({})
+        self._canvas.update()
+
+    def _next_test_point(self):
+        old_label = self._panel._edit_label.text().strip()
+        new_label = self._increment_label(old_label)
+        
+        self._panel._edit_label.setText(new_label)
+        self._panel._edit_label.setEnabled(True)
+        self._panel._spin_beacon.setEnabled(True)
+        self._panel._spin_packets.setEnabled(True)
+        
+        self._panel._btn_start_collect.setEnabled(self._picked is not None)
+        self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
+        self._panel._btn_repeat.setEnabled(False)
+        self._panel._btn_next.setEnabled(False)
+        self._panel._btn_save_calib.setEnabled(False)
+        self._panel._lbl_progress.setText("Wybierz pozycję i wciśnij Start")
+        self._panel._progress_bar.setValue(0)
+        
+        self._collecting_active = False
+        self._calib_rssi_accum = {}
+        self._canvas._radar_rssi_data = {}
+        self._canvas.set_radar_data({})
+        self._canvas.update()
+        
+        self._sb.showMessage(f"Przygotowano kolejny punkt: {new_label}")
+
+    def _increment_label(self, label: str) -> str:
+        import re
+        match = re.search(r'(.*?)(\d+)$', label)
+        if match:
+            prefix = match.group(1)
+            num_str = match.group(2)
+            length = len(num_str)
+            num = int(num_str) + 1
+            return f"{prefix}{num:0{length}d}"
+        return f"{label}_next"
+
     def _on_frame_received(self, beacon_id: int, char_int: int, rssi: float):
         if not getattr(self, '_collecting_active', True):
             return
-        if not self._calibrate_mode:
+        if not self._calibrate_mode and not getattr(self, '_test_collect_mode', False):
             return
 
         bid_str = str(beacon_id)
@@ -1539,7 +2014,13 @@ class MapWindow(QMainWindow):
             existing_db = []
             
         if existing_db:
-            new_db = [pt for pt in existing_db if pt.get("label") != prev_label]
+            # Usuwaj wpisy z bazowym labelem ORAZ warianty per-beacon (np. label_28, label_30)
+            prev_beacons = prev_pt.get('beacons', [])
+            labels_to_remove = {prev_label}
+            if isinstance(prev_beacons, list) and len(prev_beacons) > 1:
+                for b in prev_beacons:
+                    labels_to_remove.add(f"{prev_label}_{b['id']}")
+            new_db = [pt for pt in existing_db if pt.get("label") not in labels_to_remove]
             removed_count = len(existing_db) - len(new_db)
             if removed_count > 0:
                 print(f"  [Cofanie] Usunięto {removed_count} wpisów dla punktu '{prev_label}' z radio_map.json")
@@ -1596,23 +2077,37 @@ class MapWindow(QMainWindow):
                     b_global_y = b['y']
                     break
             pt = {
-                "label": self._calib_label,
-                "x_local": pt_info['x_local'],
-                "y_local": pt_info['y_local'],
-                "origin_label": self._grid_data["origin_label"],
-                "beacon_id": bid,
+                "label": f"{self._calib_label}_{bid}" if len(self._calib_beacons) > 1 else self._calib_label,
                 "x_m": b_global_x,
                 "y_m": b_global_y,
-                "average_rssi": stats["avg"],
-                "normalized_rssi": stats["norm"],
+                "_local": {
+                    "x": pt_info['x_local'],
+                    "y": pt_info['y_local'],
+                    "session": self._grid_data["origin_label"]
+                },
+                "beacons": {
+                    bid_str: {
+                        "avg": stats["avg"],
+                        "norm": stats["norm"]
+                    }
+                },
                 "timestamp": datetime.datetime.now().isoformat()
             }
+            if self._grid_data.get("tripod"):
+                tripod = self._grid_data["tripod"]
+                pt["_tripod"] = {
+                    "base_label": self._calib_label,
+                    "beacon_id": bid,
+                    "spacing_m": tripod["spacing_m"],
+                    "angle_deg": tripod["angle_deg"]
+                }
             # Upsert — nadpisz istniejący punkt o tych samych współrzędnych i beacon_id
             replaced = False
             for idx_e, existing_pt in enumerate(existing_db):
-                if (existing_pt.get("beacon_id") == bid
-                        and existing_pt.get("x_m") == b_global_x
-                        and existing_pt.get("y_m") == b_global_y):
+                if (existing_pt.get("x_m") == b_global_x
+                        and existing_pt.get("y_m") == b_global_y
+                        and "beacons" in existing_pt
+                        and bid_str in existing_pt["beacons"]):
                     existing_db[idx_e] = pt
                     replaced = True
                     break
@@ -1771,7 +2266,7 @@ class MapWindow(QMainWindow):
             return
         self._live_thread = LiveThread(self)
         self._live_thread.BEACON_ID = getattr(self, '_live_beacon_id', 28)
-        if self._calibrate_mode:
+        if self._calibrate_mode or getattr(self, '_test_collect_mode', False):
             self._live_thread.calibrate_mode = True
             self._live_thread.frame_received.connect(self._on_frame_received)
         else:
@@ -1779,7 +2274,7 @@ class MapWindow(QMainWindow):
         self._live_thread.status_msg.connect(self._on_live_status)
         self._live_thread.finished.connect(self._on_live_finished)
         self._live_thread.start()
-        if self._calibrate_mode:
+        if self._calibrate_mode or getattr(self, '_test_collect_mode', False):
             self._sb.showMessage('Uruchamianie strumienia kalibracji…')
         else:
             self._sb.showMessage('Uruchamianie pozycjonowania na żywo…')
@@ -2026,6 +2521,25 @@ if __name__ == '__main__':
             except Exception:
                 beacons = [{"id": 28, "x": 0.0, "y": 0.0}]
             win = MapWindow(calibrate_mode=True, calib_label=label, calib_beacons=beacons, calib_target_packets=target_pkts)
+            win.show()
+            sys.exit(app.exec())
+
+        # --test_collect <beacon_id> [target_packets]
+        if '--test_collect' in sys.argv:
+            idx = sys.argv.index('--test_collect')
+            beacon_id = 28
+            target_pkts = 100
+            if idx + 1 < len(sys.argv):
+                try:
+                    beacon_id = int(sys.argv[idx + 1])
+                except ValueError:
+                    pass
+            if idx + 2 < len(sys.argv):
+                try:
+                    target_pkts = int(sys.argv[idx + 2])
+                except ValueError:
+                    pass
+            win = MapWindow(test_collect_mode=True, live_beacon_id=beacon_id, calib_target_packets=target_pkts)
             win.show()
             sys.exit(app.exec())
 
