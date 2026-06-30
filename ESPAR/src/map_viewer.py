@@ -528,17 +528,6 @@ class MapCanvas(QWidget):
         if self._pick_mode or getattr(self, '_test_collect_mode', False):
             if self._picked_svg_x is not None:
                 centre = self._svg_to_widget(self._picked_svg_x, self._picked_svg_y)
-                
-                if getattr(self, '_test_collect_mode', False):
-                    # W trybie test_collect rysuj również radar chart w tym miejscu
-                    self._draw_radar_chart(p, centre)
-                    
-                    # Narysuj etykietę zbieranego punktu testowego nad radarem
-                    lbl = f"Test Pt: {getattr(self, '_calib_label', 'test_pt')}"
-                    p.setFont(QFont('Segoe UI', 9, QFont.Weight.Bold))
-                    p.setPen(QPen(QColor('#c084fc'))) # fioletowy
-                    p.drawText(int(centre.x()) - 50, int(centre.y()) - self._radar_radius_px - 10, lbl)
-
                 CR = 14
                 pen = QPen(QColor('#22c55e'), 2)
                 p.setPen(pen)
@@ -1564,7 +1553,23 @@ class MapWindow(QMainWindow):
                 self._panel._btn_cancel_calib.clicked.connect(self.close)
 
         elif getattr(self, '_test_collect_mode', False):
-            self._panel.setup_test_collect_mode("test_pt01", self._live_beacon_id, self._calib_target_packets)
+            # Dynamiczne wyznaczenie następnej etykiety na podstawie istniejących punktów
+            initial_label = "test_pt01"
+            if test_points:
+                labels = [pt.get("label", "") for pt in test_points if pt.get("label")]
+                if labels:
+                    import re
+                    max_num = 0
+                    prefix = "test_pt"
+                    for l in labels:
+                        m = re.search(r'(.*?)(\d+)$', l)
+                        if m:
+                            prefix = m.group(1)
+                            max_num = max(max_num, int(m.group(2)))
+                    if max_num > 0:
+                        initial_label = f"{prefix}{max_num + 1:02d}"
+
+            self._panel.setup_test_collect_mode(initial_label, self._live_beacon_id, self._calib_target_packets)
             self._canvas._test_collect_mode = True
             
             # Podłącz przyciski testowe
@@ -1717,146 +1722,172 @@ class MapWindow(QMainWindow):
         self.close()
 
     def _start_test_collect(self):
-        if self._picked is None:
-            return
-        
-        self._calib_target_packets = self._panel._spin_packets.value()
-        self._test_beacon_id = self._panel._spin_beacon.value()
-        self._calib_beacons = [{"id": self._test_beacon_id, "x": self._picked[0], "y": self._picked[1]}]
-        self._canvas._calib_beacons = self._calib_beacons
-        self._canvas._calib_target_packets = self._calib_target_packets
-        self._canvas._calib_label = self._panel._edit_label.text().strip() or "test_pt"
-        self._canvas._visible_radar_beacons = {self._test_beacon_id, str(self._test_beacon_id)}
-        
-        self._calib_rssi_accum = {}
-        self._canvas._radar_rssi_data = {}
-        self._canvas.set_radar_data({})
-        self._collecting_active = True
-        
-        self._panel._edit_label.setEnabled(False)
-        self._panel._spin_beacon.setEnabled(False)
-        self._panel._spin_packets.setEnabled(False)
-        self._panel._btn_start_collect.setEnabled(False)
-        self._panel._btn_start_collect.setText("Zbieranie...")
-        self._panel._btn_save_calib.setEnabled(False)
-        self._panel._btn_repeat.setEnabled(False)
-        self._panel._btn_next.setEnabled(False)
-        
-        self._panel._lbl_progress.setText("Rozpoczęto zbieranie...")
-        
-        if self._live_thread is None or not self._live_thread.isRunning():
-            self._start_live()
+        try:
+            if self._picked is None:
+                return
+            
+            self._calib_target_packets = self._panel._spin_packets.value()
+            self._test_beacon_id = self._panel._spin_beacon.value()
+            self._calib_beacons = [{"id": self._test_beacon_id, "x": self._picked[0], "y": self._picked[1]}]
+            self._canvas._calib_beacons = self._calib_beacons
+            self._canvas._calib_target_packets = self._calib_target_packets
+            self._canvas._calib_label = self._panel._edit_label.text().strip() or "test_pt"
+            self._canvas._visible_radar_beacons = {self._test_beacon_id, str(self._test_beacon_id)}
+            
+            self._calib_rssi_accum = {}
+            self._canvas._radar_rssi_data = {}
+            self._canvas.set_radar_data({})
+            self._collecting_active = True
+            
+            self._panel._edit_label.setEnabled(False)
+            self._panel._spin_beacon.setEnabled(False)
+            self._panel._spin_packets.setEnabled(False)
+            self._panel._btn_start_collect.setEnabled(False)
+            self._panel._btn_start_collect.setText("Zbieranie...")
+            self._panel._btn_save_calib.setEnabled(False)
+            self._panel._btn_repeat.setEnabled(False)
+            self._panel._btn_next.setEnabled(False)
+            
+            self._panel._lbl_progress.setText("Rozpoczęto zbieranie...")
+            
+            if self._live_thread is None or not self._live_thread.isRunning():
+                self._start_live()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._sb.showMessage(f"Błąd startu: {e}")
 
     def _save_test_point(self):
-        result = {}
-        target_pkts = self._calib_target_packets
-        bid_str = str(self._test_beacon_id)
-        
-        chars_data = self._calib_rssi_accum.get(bid_str, {})
-        avg = {}
-        for ch, values in chars_data.items():
-            if not values:
-                continue
-            trimmed = values[:target_pkts]
-            avg[str(ch)] = round(sum(trimmed) / len(trimmed), 2)
+        try:
+            result = {}
+            target_pkts = self._calib_target_packets
+            bid_str = str(self._test_beacon_id)
             
-        if not avg:
-            self._sb.showMessage("Brak danych do zapisu!")
-            return
-            
-        mn, mx = min(avg.values()), max(avg.values())
-        if mx > mn:
-            norm = {ch: round((v - mn) / (mx - mn), 4) for ch, v in avg.items()}
-        else:
-            norm = {ch: 0.0 for ch in avg}
-            
-        beacons_data = {
-            bid_str: {
-                "avg": avg,
-                "norm": norm
+            chars_data = self._calib_rssi_accum.get(bid_str, {})
+            avg = {}
+            for ch, values in chars_data.items():
+                if not values:
+                    continue
+                trimmed = values[:target_pkts]
+                avg[str(ch)] = round(sum(trimmed) / len(trimmed), 2)
+                
+            if not avg:
+                self._sb.showMessage("Brak danych do zapisu!")
+                return
+                
+            mn, mx = min(avg.values()), max(avg.values())
+            if mx > mn:
+                norm = {ch: round((v - mn) / (mx - mn), 4) for ch, v in avg.items()}
+            else:
+                norm = {ch: 0.0 for ch in avg}
+                
+            beacons_data = {
+                bid_str: {
+                    "avg": avg,
+                    "norm": norm
+                }
             }
-        }
-        
-        # Oblicz współrzędne lokalne
-        x_global = round(self._picked[0], 4)
-        y_global = round(self._picked[1], 4)
-        
-        ox = getattr(self, '_session_ox', 0.0)
-        oy = getattr(self, '_session_oy', 0.0)
-        sess_label = getattr(self, '_session_label', 'unknown')
-        
-        x_local = round(x_global - ox, 4)
-        y_local = round(y_global - oy, 4)
-        
-        label = self._panel._edit_label.text().strip() or "test_pt"
-        
-        new_point = {
-            "label":   label,
-            "x_true":  x_global,
-            "y_true":  y_global,
-            "_local":  {"x": x_local, "y": y_local, "session": sess_label},
-            "beacons": beacons_data,
-        }
-        
-        # Zapisz do test_set.json
-        from validate import load_test_set, save_test_set
-        existing = [tp for tp in load_test_set() if tp.get("label") != label]
-        existing.append(new_point)
-        save_test_set(existing)
-        
-        self._sb.showMessage(f"Zapisano punkt testowy '{label}'! Razem: {len(existing)}")
-        self._panel._lbl_progress.setText(f"Zapisano: {label} ({x_global}, {y_global}) m")
-        
-        # Odblokuj przyciski powtórzenia i kolejnego
-        self._panel._btn_save_calib.setEnabled(False)
-        self._panel._btn_repeat.setEnabled(True)
-        self._panel._btn_next.setEnabled(True)
-        
-        # Odśwież punkty na mapie
-        self._canvas._test_points = existing
-        self._canvas.update()
+            
+            # Oblicz współrzędne lokalne
+            x_global = round(self._picked[0], 4)
+            y_global = round(self._picked[1], 4)
+            
+            ox = getattr(self, '_session_ox', 0.0)
+            oy = getattr(self, '_session_oy', 0.0)
+            sess_label = getattr(self, '_session_label', 'unknown')
+            
+            x_local = round(x_global - ox, 4)
+            y_local = round(y_global - oy, 4)
+            
+            label = self._panel._edit_label.text().strip() or "test_pt"
+            
+            new_point = {
+                "label":   label,
+                "x_true":  x_global,
+                "y_true":  y_global,
+                "_local":  {"x": x_local, "y": y_local, "session": sess_label},
+                "beacons": beacons_data,
+            }
+            
+            # Zapisz do test_set.json
+            from validate import load_test_set, save_test_set
+            existing = [tp for tp in load_test_set() if tp.get("label") != label]
+            existing.append(new_point)
+            save_test_set(existing)
+            
+            self._sb.showMessage(f"Zapisano punkt testowy '{label}'! Razem: {len(existing)}")
+            self._panel._lbl_progress.setText(f"Zapisano: {label} ({x_global}, {y_global}) m")
+            
+            # Odblokuj przyciski powtórzenia i kolejnego
+            self._panel._btn_save_calib.setEnabled(False)
+            self._panel._btn_repeat.setEnabled(True)
+            self._panel._btn_next.setEnabled(True)
+            
+            # Odśwież punkty na mapie
+            self._canvas._test_points = existing
+            self._canvas.update()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._sb.showMessage(f"Błąd zapisu: {e}")
 
     def _repeat_test_collect(self):
-        self._panel._edit_label.setEnabled(True)
-        self._panel._spin_beacon.setEnabled(True)
-        self._panel._spin_packets.setEnabled(True)
-        self._panel._btn_start_collect.setEnabled(True)
-        self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
-        self._panel._btn_repeat.setEnabled(False)
-        self._panel._btn_next.setEnabled(False)
-        self._panel._btn_save_calib.setEnabled(False)
-        self._panel._lbl_progress.setText("Wciśnij Start, aby powtórzyć")
-        self._panel._progress_bar.setValue(0)
-        self._collecting_active = False
-        self._calib_rssi_accum = {}
-        self._canvas._radar_rssi_data = {}
-        self._canvas.set_radar_data({})
-        self._canvas.update()
+        try:
+            self._panel._edit_label.setEnabled(True)
+            self._panel._spin_beacon.setEnabled(True)
+            self._panel._spin_packets.setEnabled(True)
+            self._panel._btn_start_collect.setEnabled(True)
+            self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
+            self._panel._btn_repeat.setEnabled(False)
+            self._panel._btn_next.setEnabled(False)
+            self._panel._btn_save_calib.setEnabled(False)
+            self._panel._lbl_progress.setText("Wciśnij Start, aby powtórzyć")
+            self._panel._progress_bar.setValue(0)
+            self._collecting_active = False
+            self._calib_rssi_accum = {}
+            self._canvas._radar_rssi_data = {}
+            self._canvas.set_radar_data({})
+            self._canvas.update()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._sb.showMessage(f"Błąd powtórzenia: {e}")
 
     def _next_test_point(self):
-        old_label = self._panel._edit_label.text().strip()
-        new_label = self._increment_label(old_label)
-        
-        self._panel._edit_label.setText(new_label)
-        self._panel._edit_label.setEnabled(True)
-        self._panel._spin_beacon.setEnabled(True)
-        self._panel._spin_packets.setEnabled(True)
-        
-        self._panel._btn_start_collect.setEnabled(self._picked is not None)
-        self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
-        self._panel._btn_repeat.setEnabled(False)
-        self._panel._btn_next.setEnabled(False)
-        self._panel._btn_save_calib.setEnabled(False)
-        self._panel._lbl_progress.setText("Wybierz pozycję i wciśnij Start")
-        self._panel._progress_bar.setValue(0)
-        
-        self._collecting_active = False
-        self._calib_rssi_accum = {}
-        self._canvas._radar_rssi_data = {}
-        self._canvas.set_radar_data({})
-        self._canvas.update()
-        
-        self._sb.showMessage(f"Przygotowano kolejny punkt: {new_label}")
+        try:
+            old_label = self._panel._edit_label.text().strip()
+            new_label = self._increment_label(old_label)
+            
+            self._panel._edit_label.setText(new_label)
+            self._panel._edit_label.setEnabled(True)
+            self._panel._spin_beacon.setEnabled(True)
+            self._panel._spin_packets.setEnabled(True)
+            
+            # Resetowanie współrzędnych wybranego punktu
+            self._picked = None
+            self._canvas._picked_svg_x = None
+            self._canvas._picked_svg_y = None
+            self._panel._lbl_coords.setText("Kliknij na mapie...")
+            
+            self._panel._btn_start_collect.setEnabled(False)
+            self._panel._btn_start_collect.setText("Rozpocznij zbieranie")
+            self._panel._btn_repeat.setEnabled(False)
+            self._panel._btn_next.setEnabled(False)
+            self._panel._btn_save_calib.setEnabled(False)
+            self._panel._lbl_progress.setText("Wybierz pozycję i wciśnij Start")
+            self._panel._progress_bar.setValue(0)
+            
+            self._collecting_active = False
+            self._calib_rssi_accum = {}
+            self._canvas._radar_rssi_data = {}
+            self._canvas.set_radar_data({})
+            self._canvas.update()
+            
+            self._sb.showMessage(f"Przygotowano kolejny punkt: {new_label}")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._sb.showMessage(f"Błąd kolejnego punktu: {e}")
 
     def _increment_label(self, label: str) -> str:
         import re
@@ -1894,7 +1925,12 @@ class MapWindow(QMainWindow):
             b_acc = self._calib_rssi_accum.get(b_str, {})
             c = sum(len(b_acc.get(ch, [])) for ch in VALID_CHARS)
             total_collected += min(target_pkts, c)
-            if c >= target_pkts:
+            
+            # Zakończ ten beacon gdy:
+            # 1. Zebrano co najmniej target_pkts (np. 100) pakietów łącznie
+            # 2. ORAZ (wszystkie 12 kierunków ma przynajmniej 1 pakiet LUB zebrano 1.5 * target_pkts dla bezpieczeństwa)
+            has_all_dirs = all(len(b_acc.get(ch, [])) > 0 for ch in VALID_CHARS)
+            if c >= target_pkts and (has_all_dirs or c >= target_pkts * 1.5):
                 done_beacons += 1
 
         is_done = (done_beacons >= num_beacons)

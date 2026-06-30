@@ -488,8 +488,14 @@ class Calibrator:
             beacon_id = tripod["beacon_ids"][0]
         else:
             available = self._scan_available_beacons()
-            beacon_id = available[0] if available else 28
-            print(f"\n  Wykryte beacony: {', '.join(str(b) for b in available)}")
+            print("\n  Wykryte beacony w zasięgu:")
+            for idx, bid in enumerate(available, 1):
+                print(f"    {idx} - Beacon ID {bid}")
+            choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
+            if available and 1 <= choice_idx <= len(available):
+                beacon_id = available[choice_idx - 1]
+            else:
+                beacon_id = available[0] if available else 28
             print(f"  Podgląd radaru: Beacon {beacon_id} (dane zbierane ze wszystkich)")
 
         # ── Konfiguracja czasu / liczby pakietów ──

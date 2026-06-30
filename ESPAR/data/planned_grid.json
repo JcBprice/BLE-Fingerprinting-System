@@ -4,496 +4,2984 @@
   "oy": 5.916,
   "target_packets": 100,
   "tripod": {
-    "n_beacons": 2,
+    "n_beacons": 3,
     "beacon_ids": [
-      28,
-      30
+      6,
+      8,
+      10
     ],
-    "spacing_m": 1.97,
-    "angle_deg": 90.0,
-    "scan_direction": "prawo"
+    "spacing_m": 1.0,
+    "angle_deg": 0.0,
+    "scan_direction": "dol"
   },
   "points": [
     {
-      "label": "korytarz_p01",
-      "x_local": -20.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 21.359,
-      "y_global": 6.371,
+      "label": "test01",
+      "x_local": 0.0,
+      "y_local": 1.0,
+      "x_global": 41.649,
+      "y_global": 6.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 21.359,
-          "y": 6.371,
-          "local_x": -20.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 6.916,
+          "local_x": 0.0,
+          "local_y": 1.0
         },
         {
-          "id": 30,
-          "x": 21.359,
-          "y": 8.341,
-          "local_x": -20.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 6.916,
+          "local_x": 1.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 6.916,
+          "local_x": 2.0,
+          "local_y": 1.0
         }
       ]
     },
     {
-      "label": "korytarz_p02",
-      "x_local": -19.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 21.859,
-      "y_global": 6.371,
+      "label": "test02",
+      "x_local": 0.0,
+      "y_local": 2.0,
+      "x_global": 41.649,
+      "y_global": 7.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 21.859,
-          "y": 6.371,
-          "local_x": -19.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 7.916,
+          "local_x": 0.0,
+          "local_y": 2.0
         },
         {
-          "id": 30,
-          "x": 21.859,
-          "y": 8.341,
-          "local_x": -19.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 7.916,
+          "local_x": 1.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 7.916,
+          "local_x": 2.0,
+          "local_y": 2.0
         }
       ]
     },
     {
-      "label": "korytarz_p03",
-      "x_local": -19.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 22.359,
-      "y_global": 6.371,
+      "label": "test03",
+      "x_local": 0.0,
+      "y_local": 3.0,
+      "x_global": 41.649,
+      "y_global": 8.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 22.359,
-          "y": 6.371,
-          "local_x": -19.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 8.916,
+          "local_x": 0.0,
+          "local_y": 3.0
         },
         {
-          "id": 30,
-          "x": 22.359,
-          "y": 8.341,
-          "local_x": -19.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 8.916,
+          "local_x": 1.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 8.916,
+          "local_x": 2.0,
+          "local_y": 3.0
         }
       ]
     },
     {
-      "label": "korytarz_p04",
-      "x_local": -18.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 22.859,
-      "y_global": 6.371,
+      "label": "test04",
+      "x_local": 0.0,
+      "y_local": 4.0,
+      "x_global": 41.649,
+      "y_global": 9.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 22.859,
-          "y": 6.371,
-          "local_x": -18.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 9.916,
+          "local_x": 0.0,
+          "local_y": 4.0
         },
         {
-          "id": 30,
-          "x": 22.859,
-          "y": 8.341,
-          "local_x": -18.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 9.916,
+          "local_x": 1.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 9.916,
+          "local_x": 2.0,
+          "local_y": 4.0
         }
       ]
     },
     {
-      "label": "korytarz_p05",
-      "x_local": -18.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 23.359,
-      "y_global": 6.371,
+      "label": "test05",
+      "x_local": 0.0,
+      "y_local": 5.0,
+      "x_global": 41.649,
+      "y_global": 10.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 23.359,
-          "y": 6.371,
-          "local_x": -18.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 10.916,
+          "local_x": 0.0,
+          "local_y": 5.0
         },
         {
-          "id": 30,
-          "x": 23.359,
-          "y": 8.341,
-          "local_x": -18.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 10.916,
+          "local_x": 1.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 10.916,
+          "local_x": 2.0,
+          "local_y": 5.0
         }
       ]
     },
     {
-      "label": "korytarz_p06",
-      "x_local": -17.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 23.859,
-      "y_global": 6.371,
+      "label": "test06",
+      "x_local": 0.0,
+      "y_local": 6.0,
+      "x_global": 41.649,
+      "y_global": 11.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 23.859,
-          "y": 6.371,
-          "local_x": -17.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 11.916,
+          "local_x": 0.0,
+          "local_y": 6.0
         },
         {
-          "id": 30,
-          "x": 23.859,
-          "y": 8.341,
-          "local_x": -17.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 11.916,
+          "local_x": 1.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 11.916,
+          "local_x": 2.0,
+          "local_y": 6.0
         }
       ]
     },
     {
-      "label": "korytarz_p07",
-      "x_local": -17.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 24.359,
-      "y_global": 6.371,
+      "label": "test07",
+      "x_local": 0.0,
+      "y_local": 7.0,
+      "x_global": 41.649,
+      "y_global": 12.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 24.359,
-          "y": 6.371,
-          "local_x": -17.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 12.916,
+          "local_x": 0.0,
+          "local_y": 7.0
         },
         {
-          "id": 30,
-          "x": 24.359,
-          "y": 8.341,
-          "local_x": -17.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 12.916,
+          "local_x": 1.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 12.916,
+          "local_x": 2.0,
+          "local_y": 7.0
         }
       ]
     },
     {
-      "label": "korytarz_p08",
-      "x_local": -16.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 24.859,
-      "y_global": 6.371,
+      "label": "test08",
+      "x_local": 0.0,
+      "y_local": 8.0,
+      "x_global": 41.649,
+      "y_global": 13.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 24.859,
-          "y": 6.371,
-          "local_x": -16.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 13.916,
+          "local_x": 0.0,
+          "local_y": 8.0
         },
         {
-          "id": 30,
-          "x": 24.859,
-          "y": 8.341,
-          "local_x": -16.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 13.916,
+          "local_x": 1.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 13.916,
+          "local_x": 2.0,
+          "local_y": 8.0
         }
       ]
     },
     {
-      "label": "korytarz_p09",
-      "x_local": -16.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 25.359,
-      "y_global": 6.371,
+      "label": "test09",
+      "x_local": 0.0,
+      "y_local": 9.0,
+      "x_global": 41.649,
+      "y_global": 14.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 25.359,
-          "y": 6.371,
-          "local_x": -16.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 14.916,
+          "local_x": 0.0,
+          "local_y": 9.0
         },
         {
-          "id": 30,
-          "x": 25.359,
-          "y": 8.341,
-          "local_x": -16.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 14.916,
+          "local_x": 1.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 14.916,
+          "local_x": 2.0,
+          "local_y": 9.0
         }
       ]
     },
     {
-      "label": "korytarz_p10",
-      "x_local": -15.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 25.859,
-      "y_global": 6.371,
+      "label": "test10",
+      "x_local": 0.0,
+      "y_local": 10.0,
+      "x_global": 41.649,
+      "y_global": 15.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 25.859,
-          "y": 6.371,
-          "local_x": -15.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 15.916,
+          "local_x": 0.0,
+          "local_y": 10.0
         },
         {
-          "id": 30,
-          "x": 25.859,
-          "y": 8.341,
-          "local_x": -15.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 15.916,
+          "local_x": 1.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 15.916,
+          "local_x": 2.0,
+          "local_y": 10.0
         }
       ]
     },
     {
-      "label": "korytarz_p11",
-      "x_local": -15.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 26.359,
-      "y_global": 6.371,
+      "label": "test11",
+      "x_local": 0.0,
+      "y_local": 11.0,
+      "x_global": 41.649,
+      "y_global": 16.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 26.359,
-          "y": 6.371,
-          "local_x": -15.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 41.649,
+          "y": 16.916,
+          "local_x": 0.0,
+          "local_y": 11.0
         },
         {
-          "id": 30,
-          "x": 26.359,
-          "y": 8.341,
-          "local_x": -15.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 42.649,
+          "y": 16.916,
+          "local_x": 1.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 43.649,
+          "y": 16.916,
+          "local_x": 2.0,
+          "local_y": 11.0
         }
       ]
     },
     {
-      "label": "korytarz_p12",
-      "x_local": -14.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 26.859,
-      "y_global": 6.371,
+      "label": "test12",
+      "x_local": 1.0,
+      "y_local": 11.0,
+      "x_global": 42.649,
+      "y_global": 16.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 26.859,
-          "y": 6.371,
-          "local_x": -14.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 16.916,
+          "local_x": 1.0,
+          "local_y": 11.0
         },
         {
-          "id": 30,
-          "x": 26.859,
-          "y": 8.341,
-          "local_x": -14.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 16.916,
+          "local_x": 2.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 16.916,
+          "local_x": 3.0,
+          "local_y": 11.0
         }
       ]
     },
     {
-      "label": "korytarz_p13",
-      "x_local": -14.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 27.359,
-      "y_global": 6.371,
+      "label": "test13",
+      "x_local": 1.0,
+      "y_local": 10.0,
+      "x_global": 42.649,
+      "y_global": 15.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 27.359,
-          "y": 6.371,
-          "local_x": -14.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 15.916,
+          "local_x": 1.0,
+          "local_y": 10.0
         },
         {
-          "id": 30,
-          "x": 27.359,
-          "y": 8.341,
-          "local_x": -14.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 15.916,
+          "local_x": 2.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 15.916,
+          "local_x": 3.0,
+          "local_y": 10.0
         }
       ]
     },
     {
-      "label": "korytarz_p14",
-      "x_local": -13.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 27.859,
-      "y_global": 6.371,
+      "label": "test14",
+      "x_local": 1.0,
+      "y_local": 9.0,
+      "x_global": 42.649,
+      "y_global": 14.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 27.859,
-          "y": 6.371,
-          "local_x": -13.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 14.916,
+          "local_x": 1.0,
+          "local_y": 9.0
         },
         {
-          "id": 30,
-          "x": 27.859,
-          "y": 8.341,
-          "local_x": -13.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 14.916,
+          "local_x": 2.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 14.916,
+          "local_x": 3.0,
+          "local_y": 9.0
         }
       ]
     },
     {
-      "label": "korytarz_p15",
-      "x_local": -13.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 28.359,
-      "y_global": 6.371,
+      "label": "test15",
+      "x_local": 1.0,
+      "y_local": 8.0,
+      "x_global": 42.649,
+      "y_global": 13.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 28.359,
-          "y": 6.371,
-          "local_x": -13.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 13.916,
+          "local_x": 1.0,
+          "local_y": 8.0
         },
         {
-          "id": 30,
-          "x": 28.359,
-          "y": 8.341,
-          "local_x": -13.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 13.916,
+          "local_x": 2.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 13.916,
+          "local_x": 3.0,
+          "local_y": 8.0
         }
       ]
     },
     {
-      "label": "korytarz_p16",
-      "x_local": -12.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 28.859,
-      "y_global": 6.371,
+      "label": "test16",
+      "x_local": 1.0,
+      "y_local": 7.0,
+      "x_global": 42.649,
+      "y_global": 12.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 28.859,
-          "y": 6.371,
-          "local_x": -12.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 12.916,
+          "local_x": 1.0,
+          "local_y": 7.0
         },
         {
-          "id": 30,
-          "x": 28.859,
-          "y": 8.341,
-          "local_x": -12.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 12.916,
+          "local_x": 2.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 12.916,
+          "local_x": 3.0,
+          "local_y": 7.0
         }
       ]
     },
     {
-      "label": "korytarz_p17",
-      "x_local": -12.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 29.359,
-      "y_global": 6.371,
+      "label": "test17",
+      "x_local": 1.0,
+      "y_local": 6.0,
+      "x_global": 42.649,
+      "y_global": 11.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 29.359,
-          "y": 6.371,
-          "local_x": -12.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 11.916,
+          "local_x": 1.0,
+          "local_y": 6.0
         },
         {
-          "id": 30,
-          "x": 29.359,
-          "y": 8.341,
-          "local_x": -12.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 11.916,
+          "local_x": 2.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 11.916,
+          "local_x": 3.0,
+          "local_y": 6.0
         }
       ]
     },
     {
-      "label": "korytarz_p18",
-      "x_local": -11.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 29.859,
-      "y_global": 6.371,
+      "label": "test18",
+      "x_local": 1.0,
+      "y_local": 5.0,
+      "x_global": 42.649,
+      "y_global": 10.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 29.859,
-          "y": 6.371,
-          "local_x": -11.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 10.916,
+          "local_x": 1.0,
+          "local_y": 5.0
         },
         {
-          "id": 30,
-          "x": 29.859,
-          "y": 8.341,
-          "local_x": -11.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 10.916,
+          "local_x": 2.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 10.916,
+          "local_x": 3.0,
+          "local_y": 5.0
         }
       ]
     },
     {
-      "label": "korytarz_p19",
-      "x_local": -11.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 30.359,
-      "y_global": 6.371,
+      "label": "test19",
+      "x_local": 1.0,
+      "y_local": 4.0,
+      "x_global": 42.649,
+      "y_global": 9.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 30.359,
-          "y": 6.371,
-          "local_x": -11.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 9.916,
+          "local_x": 1.0,
+          "local_y": 4.0
         },
         {
-          "id": 30,
-          "x": 30.359,
-          "y": 8.341,
-          "local_x": -11.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 9.916,
+          "local_x": 2.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 9.916,
+          "local_x": 3.0,
+          "local_y": 4.0
         }
       ]
     },
     {
-      "label": "korytarz_p20",
-      "x_local": -10.79,
-      "y_local": 0.45499999999999996,
-      "x_global": 30.859,
-      "y_global": 6.371,
+      "label": "test20",
+      "x_local": 1.0,
+      "y_local": 3.0,
+      "x_global": 42.649,
+      "y_global": 8.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 30.859,
-          "y": 6.371,
-          "local_x": -10.79,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 8.916,
+          "local_x": 1.0,
+          "local_y": 3.0
         },
         {
-          "id": 30,
-          "x": 30.859,
-          "y": 8.341,
-          "local_x": -10.79,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 8.916,
+          "local_x": 2.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 8.916,
+          "local_x": 3.0,
+          "local_y": 3.0
         }
       ]
     },
     {
-      "label": "korytarz_p21",
-      "x_local": -10.29,
-      "y_local": 0.45499999999999996,
-      "x_global": 31.359,
-      "y_global": 6.371,
+      "label": "test21",
+      "x_local": 1.0,
+      "y_local": 2.0,
+      "x_global": 42.649,
+      "y_global": 7.916,
       "beacons": [
         {
-          "id": 28,
-          "x": 31.359,
-          "y": 6.371,
-          "local_x": -10.29,
-          "local_y": 0.455
+          "id": 6,
+          "x": 42.649,
+          "y": 7.916,
+          "local_x": 1.0,
+          "local_y": 2.0
         },
         {
-          "id": 30,
-          "x": 31.359,
-          "y": 8.341,
-          "local_x": -10.29,
-          "local_y": 2.425
+          "id": 8,
+          "x": 43.649,
+          "y": 7.916,
+          "local_x": 2.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 7.916,
+          "local_x": 3.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test22",
+      "x_local": 1.0,
+      "y_local": 1.0,
+      "x_global": 42.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 42.649,
+          "y": 6.916,
+          "local_x": 1.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 43.649,
+          "y": 6.916,
+          "local_x": 2.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 44.649,
+          "y": 6.916,
+          "local_x": 3.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test23",
+      "x_local": 2.0,
+      "y_local": 1.0,
+      "x_global": 43.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 6.916,
+          "local_x": 2.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 6.916,
+          "local_x": 3.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 6.916,
+          "local_x": 4.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test24",
+      "x_local": 2.0,
+      "y_local": 2.0,
+      "x_global": 43.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 7.916,
+          "local_x": 2.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 7.916,
+          "local_x": 3.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 7.916,
+          "local_x": 4.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test25",
+      "x_local": 2.0,
+      "y_local": 3.0,
+      "x_global": 43.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 8.916,
+          "local_x": 2.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 8.916,
+          "local_x": 3.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 8.916,
+          "local_x": 4.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test26",
+      "x_local": 2.0,
+      "y_local": 4.0,
+      "x_global": 43.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 9.916,
+          "local_x": 2.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 9.916,
+          "local_x": 3.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 9.916,
+          "local_x": 4.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test27",
+      "x_local": 2.0,
+      "y_local": 5.0,
+      "x_global": 43.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 10.916,
+          "local_x": 2.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 10.916,
+          "local_x": 3.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 10.916,
+          "local_x": 4.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test28",
+      "x_local": 2.0,
+      "y_local": 6.0,
+      "x_global": 43.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 11.916,
+          "local_x": 2.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 11.916,
+          "local_x": 3.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 11.916,
+          "local_x": 4.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test29",
+      "x_local": 2.0,
+      "y_local": 7.0,
+      "x_global": 43.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 12.916,
+          "local_x": 2.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 12.916,
+          "local_x": 3.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 12.916,
+          "local_x": 4.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test30",
+      "x_local": 2.0,
+      "y_local": 8.0,
+      "x_global": 43.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 13.916,
+          "local_x": 2.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 13.916,
+          "local_x": 3.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 13.916,
+          "local_x": 4.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test31",
+      "x_local": 2.0,
+      "y_local": 9.0,
+      "x_global": 43.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 14.916,
+          "local_x": 2.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 14.916,
+          "local_x": 3.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 14.916,
+          "local_x": 4.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test32",
+      "x_local": 2.0,
+      "y_local": 10.0,
+      "x_global": 43.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 15.916,
+          "local_x": 2.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 15.916,
+          "local_x": 3.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 15.916,
+          "local_x": 4.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test33",
+      "x_local": 2.0,
+      "y_local": 11.0,
+      "x_global": 43.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 43.649,
+          "y": 16.916,
+          "local_x": 2.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 44.649,
+          "y": 16.916,
+          "local_x": 3.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 45.649,
+          "y": 16.916,
+          "local_x": 4.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test34",
+      "x_local": 3.0,
+      "y_local": 11.0,
+      "x_global": 44.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 16.916,
+          "local_x": 3.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 16.916,
+          "local_x": 4.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 16.916,
+          "local_x": 5.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test35",
+      "x_local": 3.0,
+      "y_local": 10.0,
+      "x_global": 44.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 15.916,
+          "local_x": 3.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 15.916,
+          "local_x": 4.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 15.916,
+          "local_x": 5.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test36",
+      "x_local": 3.0,
+      "y_local": 9.0,
+      "x_global": 44.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 14.916,
+          "local_x": 3.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 14.916,
+          "local_x": 4.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 14.916,
+          "local_x": 5.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test37",
+      "x_local": 3.0,
+      "y_local": 8.0,
+      "x_global": 44.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 13.916,
+          "local_x": 3.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 13.916,
+          "local_x": 4.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 13.916,
+          "local_x": 5.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test38",
+      "x_local": 3.0,
+      "y_local": 7.0,
+      "x_global": 44.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 12.916,
+          "local_x": 3.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 12.916,
+          "local_x": 4.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 12.916,
+          "local_x": 5.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test39",
+      "x_local": 3.0,
+      "y_local": 6.0,
+      "x_global": 44.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 11.916,
+          "local_x": 3.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 11.916,
+          "local_x": 4.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 11.916,
+          "local_x": 5.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test40",
+      "x_local": 3.0,
+      "y_local": 5.0,
+      "x_global": 44.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 10.916,
+          "local_x": 3.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 10.916,
+          "local_x": 4.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 10.916,
+          "local_x": 5.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test41",
+      "x_local": 3.0,
+      "y_local": 4.0,
+      "x_global": 44.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 9.916,
+          "local_x": 3.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 9.916,
+          "local_x": 4.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 9.916,
+          "local_x": 5.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test42",
+      "x_local": 3.0,
+      "y_local": 3.0,
+      "x_global": 44.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 8.916,
+          "local_x": 3.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 8.916,
+          "local_x": 4.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 8.916,
+          "local_x": 5.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test43",
+      "x_local": 3.0,
+      "y_local": 2.0,
+      "x_global": 44.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 7.916,
+          "local_x": 3.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 7.916,
+          "local_x": 4.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 7.916,
+          "local_x": 5.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test44",
+      "x_local": 3.0,
+      "y_local": 1.0,
+      "x_global": 44.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 44.649,
+          "y": 6.916,
+          "local_x": 3.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 45.649,
+          "y": 6.916,
+          "local_x": 4.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 46.649,
+          "y": 6.916,
+          "local_x": 5.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test45",
+      "x_local": 4.0,
+      "y_local": 1.0,
+      "x_global": 45.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 6.916,
+          "local_x": 4.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 6.916,
+          "local_x": 5.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 6.916,
+          "local_x": 6.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test46",
+      "x_local": 4.0,
+      "y_local": 2.0,
+      "x_global": 45.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 7.916,
+          "local_x": 4.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 7.916,
+          "local_x": 5.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 7.916,
+          "local_x": 6.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test47",
+      "x_local": 4.0,
+      "y_local": 3.0,
+      "x_global": 45.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 8.916,
+          "local_x": 4.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 8.916,
+          "local_x": 5.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 8.916,
+          "local_x": 6.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test48",
+      "x_local": 4.0,
+      "y_local": 4.0,
+      "x_global": 45.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 9.916,
+          "local_x": 4.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 9.916,
+          "local_x": 5.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 9.916,
+          "local_x": 6.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test49",
+      "x_local": 4.0,
+      "y_local": 5.0,
+      "x_global": 45.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 10.916,
+          "local_x": 4.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 10.916,
+          "local_x": 5.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 10.916,
+          "local_x": 6.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test50",
+      "x_local": 4.0,
+      "y_local": 6.0,
+      "x_global": 45.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 11.916,
+          "local_x": 4.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 11.916,
+          "local_x": 5.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 11.916,
+          "local_x": 6.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test51",
+      "x_local": 4.0,
+      "y_local": 7.0,
+      "x_global": 45.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 12.916,
+          "local_x": 4.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 12.916,
+          "local_x": 5.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 12.916,
+          "local_x": 6.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test52",
+      "x_local": 4.0,
+      "y_local": 8.0,
+      "x_global": 45.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 13.916,
+          "local_x": 4.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 13.916,
+          "local_x": 5.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 13.916,
+          "local_x": 6.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test53",
+      "x_local": 4.0,
+      "y_local": 9.0,
+      "x_global": 45.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 14.916,
+          "local_x": 4.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 14.916,
+          "local_x": 5.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 14.916,
+          "local_x": 6.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test54",
+      "x_local": 4.0,
+      "y_local": 10.0,
+      "x_global": 45.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 15.916,
+          "local_x": 4.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 15.916,
+          "local_x": 5.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 15.916,
+          "local_x": 6.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test55",
+      "x_local": 4.0,
+      "y_local": 11.0,
+      "x_global": 45.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 45.649,
+          "y": 16.916,
+          "local_x": 4.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 46.649,
+          "y": 16.916,
+          "local_x": 5.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 47.649,
+          "y": 16.916,
+          "local_x": 6.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test56",
+      "x_local": 5.0,
+      "y_local": 11.0,
+      "x_global": 46.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 16.916,
+          "local_x": 5.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 16.916,
+          "local_x": 6.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 16.916,
+          "local_x": 7.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test57",
+      "x_local": 5.0,
+      "y_local": 10.0,
+      "x_global": 46.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 15.916,
+          "local_x": 5.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 15.916,
+          "local_x": 6.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 15.916,
+          "local_x": 7.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test58",
+      "x_local": 5.0,
+      "y_local": 9.0,
+      "x_global": 46.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 14.916,
+          "local_x": 5.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 14.916,
+          "local_x": 6.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 14.916,
+          "local_x": 7.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test59",
+      "x_local": 5.0,
+      "y_local": 8.0,
+      "x_global": 46.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 13.916,
+          "local_x": 5.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 13.916,
+          "local_x": 6.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 13.916,
+          "local_x": 7.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test60",
+      "x_local": 5.0,
+      "y_local": 7.0,
+      "x_global": 46.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 12.916,
+          "local_x": 5.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 12.916,
+          "local_x": 6.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 12.916,
+          "local_x": 7.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test61",
+      "x_local": 5.0,
+      "y_local": 6.0,
+      "x_global": 46.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 11.916,
+          "local_x": 5.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 11.916,
+          "local_x": 6.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 11.916,
+          "local_x": 7.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test62",
+      "x_local": 5.0,
+      "y_local": 5.0,
+      "x_global": 46.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 10.916,
+          "local_x": 5.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 10.916,
+          "local_x": 6.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 10.916,
+          "local_x": 7.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test63",
+      "x_local": 5.0,
+      "y_local": 4.0,
+      "x_global": 46.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 9.916,
+          "local_x": 5.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 9.916,
+          "local_x": 6.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 9.916,
+          "local_x": 7.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test64",
+      "x_local": 5.0,
+      "y_local": 3.0,
+      "x_global": 46.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 8.916,
+          "local_x": 5.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 8.916,
+          "local_x": 6.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 8.916,
+          "local_x": 7.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test65",
+      "x_local": 5.0,
+      "y_local": 2.0,
+      "x_global": 46.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 7.916,
+          "local_x": 5.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 7.916,
+          "local_x": 6.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 7.916,
+          "local_x": 7.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test66",
+      "x_local": 5.0,
+      "y_local": 1.0,
+      "x_global": 46.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 46.649,
+          "y": 6.916,
+          "local_x": 5.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 47.649,
+          "y": 6.916,
+          "local_x": 6.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 48.649,
+          "y": 6.916,
+          "local_x": 7.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test67",
+      "x_local": 6.0,
+      "y_local": 1.0,
+      "x_global": 47.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 6.916,
+          "local_x": 6.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 6.916,
+          "local_x": 7.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 6.916,
+          "local_x": 8.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test68",
+      "x_local": 6.0,
+      "y_local": 2.0,
+      "x_global": 47.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 7.916,
+          "local_x": 6.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 7.916,
+          "local_x": 7.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 7.916,
+          "local_x": 8.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test69",
+      "x_local": 6.0,
+      "y_local": 3.0,
+      "x_global": 47.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 8.916,
+          "local_x": 6.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 8.916,
+          "local_x": 7.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 8.916,
+          "local_x": 8.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test70",
+      "x_local": 6.0,
+      "y_local": 4.0,
+      "x_global": 47.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 9.916,
+          "local_x": 6.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 9.916,
+          "local_x": 7.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 9.916,
+          "local_x": 8.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test71",
+      "x_local": 6.0,
+      "y_local": 5.0,
+      "x_global": 47.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 10.916,
+          "local_x": 6.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 10.916,
+          "local_x": 7.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 10.916,
+          "local_x": 8.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test72",
+      "x_local": 6.0,
+      "y_local": 6.0,
+      "x_global": 47.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 11.916,
+          "local_x": 6.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 11.916,
+          "local_x": 7.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 11.916,
+          "local_x": 8.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test73",
+      "x_local": 6.0,
+      "y_local": 7.0,
+      "x_global": 47.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 12.916,
+          "local_x": 6.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 12.916,
+          "local_x": 7.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 12.916,
+          "local_x": 8.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test74",
+      "x_local": 6.0,
+      "y_local": 8.0,
+      "x_global": 47.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 13.916,
+          "local_x": 6.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 13.916,
+          "local_x": 7.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 13.916,
+          "local_x": 8.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test75",
+      "x_local": 6.0,
+      "y_local": 9.0,
+      "x_global": 47.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 14.916,
+          "local_x": 6.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 14.916,
+          "local_x": 7.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 14.916,
+          "local_x": 8.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test76",
+      "x_local": 6.0,
+      "y_local": 10.0,
+      "x_global": 47.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 15.916,
+          "local_x": 6.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 15.916,
+          "local_x": 7.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 15.916,
+          "local_x": 8.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test77",
+      "x_local": 6.0,
+      "y_local": 11.0,
+      "x_global": 47.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 47.649,
+          "y": 16.916,
+          "local_x": 6.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 48.649,
+          "y": 16.916,
+          "local_x": 7.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 49.649,
+          "y": 16.916,
+          "local_x": 8.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test78",
+      "x_local": 7.0,
+      "y_local": 11.0,
+      "x_global": 48.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 16.916,
+          "local_x": 7.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 16.916,
+          "local_x": 8.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 16.916,
+          "local_x": 9.0,
+          "local_y": 11.0
+        }
+      ]
+    },
+    {
+      "label": "test79",
+      "x_local": 7.0,
+      "y_local": 10.0,
+      "x_global": 48.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 15.916,
+          "local_x": 7.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 15.916,
+          "local_x": 8.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 15.916,
+          "local_x": 9.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test80",
+      "x_local": 7.0,
+      "y_local": 9.0,
+      "x_global": 48.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 14.916,
+          "local_x": 7.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 14.916,
+          "local_x": 8.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 14.916,
+          "local_x": 9.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test81",
+      "x_local": 7.0,
+      "y_local": 8.0,
+      "x_global": 48.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 13.916,
+          "local_x": 7.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 13.916,
+          "local_x": 8.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 13.916,
+          "local_x": 9.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test82",
+      "x_local": 7.0,
+      "y_local": 7.0,
+      "x_global": 48.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 12.916,
+          "local_x": 7.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 12.916,
+          "local_x": 8.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 12.916,
+          "local_x": 9.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test83",
+      "x_local": 7.0,
+      "y_local": 6.0,
+      "x_global": 48.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 11.916,
+          "local_x": 7.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 11.916,
+          "local_x": 8.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 11.916,
+          "local_x": 9.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test84",
+      "x_local": 7.0,
+      "y_local": 5.0,
+      "x_global": 48.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 10.916,
+          "local_x": 7.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 10.916,
+          "local_x": 8.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 10.916,
+          "local_x": 9.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test85",
+      "x_local": 7.0,
+      "y_local": 4.0,
+      "x_global": 48.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 9.916,
+          "local_x": 7.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 9.916,
+          "local_x": 8.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 9.916,
+          "local_x": 9.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test86",
+      "x_local": 7.0,
+      "y_local": 3.0,
+      "x_global": 48.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 8.916,
+          "local_x": 7.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 8.916,
+          "local_x": 8.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 8.916,
+          "local_x": 9.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test87",
+      "x_local": 7.0,
+      "y_local": 2.0,
+      "x_global": 48.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 7.916,
+          "local_x": 7.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 7.916,
+          "local_x": 8.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 7.916,
+          "local_x": 9.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test88",
+      "x_local": 7.0,
+      "y_local": 1.0,
+      "x_global": 48.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 48.649,
+          "y": 6.916,
+          "local_x": 7.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 49.649,
+          "y": 6.916,
+          "local_x": 8.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 50.649,
+          "y": 6.916,
+          "local_x": 9.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test89",
+      "x_local": 8.0,
+      "y_local": 1.0,
+      "x_global": 49.649,
+      "y_global": 6.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 6.916,
+          "local_x": 8.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 6.916,
+          "local_x": 9.0,
+          "local_y": 1.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 6.916,
+          "local_x": 10.0,
+          "local_y": 1.0
+        }
+      ]
+    },
+    {
+      "label": "test90",
+      "x_local": 8.0,
+      "y_local": 2.0,
+      "x_global": 49.649,
+      "y_global": 7.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 7.916,
+          "local_x": 8.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 7.916,
+          "local_x": 9.0,
+          "local_y": 2.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 7.916,
+          "local_x": 10.0,
+          "local_y": 2.0
+        }
+      ]
+    },
+    {
+      "label": "test91",
+      "x_local": 8.0,
+      "y_local": 3.0,
+      "x_global": 49.649,
+      "y_global": 8.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 8.916,
+          "local_x": 8.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 8.916,
+          "local_x": 9.0,
+          "local_y": 3.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 8.916,
+          "local_x": 10.0,
+          "local_y": 3.0
+        }
+      ]
+    },
+    {
+      "label": "test92",
+      "x_local": 8.0,
+      "y_local": 4.0,
+      "x_global": 49.649,
+      "y_global": 9.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 9.916,
+          "local_x": 8.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 9.916,
+          "local_x": 9.0,
+          "local_y": 4.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 9.916,
+          "local_x": 10.0,
+          "local_y": 4.0
+        }
+      ]
+    },
+    {
+      "label": "test93",
+      "x_local": 8.0,
+      "y_local": 5.0,
+      "x_global": 49.649,
+      "y_global": 10.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 10.916,
+          "local_x": 8.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 10.916,
+          "local_x": 9.0,
+          "local_y": 5.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 10.916,
+          "local_x": 10.0,
+          "local_y": 5.0
+        }
+      ]
+    },
+    {
+      "label": "test94",
+      "x_local": 8.0,
+      "y_local": 6.0,
+      "x_global": 49.649,
+      "y_global": 11.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 11.916,
+          "local_x": 8.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 11.916,
+          "local_x": 9.0,
+          "local_y": 6.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 11.916,
+          "local_x": 10.0,
+          "local_y": 6.0
+        }
+      ]
+    },
+    {
+      "label": "test95",
+      "x_local": 8.0,
+      "y_local": 7.0,
+      "x_global": 49.649,
+      "y_global": 12.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 12.916,
+          "local_x": 8.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 12.916,
+          "local_x": 9.0,
+          "local_y": 7.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 12.916,
+          "local_x": 10.0,
+          "local_y": 7.0
+        }
+      ]
+    },
+    {
+      "label": "test96",
+      "x_local": 8.0,
+      "y_local": 8.0,
+      "x_global": 49.649,
+      "y_global": 13.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 13.916,
+          "local_x": 8.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 13.916,
+          "local_x": 9.0,
+          "local_y": 8.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 13.916,
+          "local_x": 10.0,
+          "local_y": 8.0
+        }
+      ]
+    },
+    {
+      "label": "test97",
+      "x_local": 8.0,
+      "y_local": 9.0,
+      "x_global": 49.649,
+      "y_global": 14.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 14.916,
+          "local_x": 8.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 14.916,
+          "local_x": 9.0,
+          "local_y": 9.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 14.916,
+          "local_x": 10.0,
+          "local_y": 9.0
+        }
+      ]
+    },
+    {
+      "label": "test98",
+      "x_local": 8.0,
+      "y_local": 10.0,
+      "x_global": 49.649,
+      "y_global": 15.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 15.916,
+          "local_x": 8.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 15.916,
+          "local_x": 9.0,
+          "local_y": 10.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 15.916,
+          "local_x": 10.0,
+          "local_y": 10.0
+        }
+      ]
+    },
+    {
+      "label": "test99",
+      "x_local": 8.0,
+      "y_local": 11.0,
+      "x_global": 49.649,
+      "y_global": 16.916,
+      "beacons": [
+        {
+          "id": 6,
+          "x": 49.649,
+          "y": 16.916,
+          "local_x": 8.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 8,
+          "x": 50.649,
+          "y": 16.916,
+          "local_x": 9.0,
+          "local_y": 11.0
+        },
+        {
+          "id": 10,
+          "x": 51.649,
+          "y": 16.916,
+          "local_x": 10.0,
+          "local_y": 11.0
         }
       ]
     }
