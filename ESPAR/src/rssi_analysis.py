@@ -33,30 +33,13 @@ import subprocess
 import sys
 from datetime import datetime
 
-SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR      = os.path.normpath(os.path.join(SCRIPT_DIR, '..', 'data'))
+from config import SCRIPT_DIR, DATA_DIR, CHAR_TO_DEG
 SNAPSHOTS_DIR = os.path.join(DATA_DIR, 'rssi_snapshots')
 
 # Wymuszamy backend Agg (renderuje do pliku, nie ładuje Qt/Wayland)
 # Wykresy otwieramy przez xdg-open w _show_plot()
 import matplotlib
 matplotlib.use('Agg')
-
-# Katy wiazki dla kazdego char_int (w stopniach) - do etykiet na wykresie
-CHAR_TO_DEG = {
-    31:    90,
-    62:   120,
-    124:  150,
-    248:  180,
-    496:  210,
-    992:  240,
-    1984: 270,
-    3968: 300,
-    3841: 330,
-    3587:   0,
-    3079:  30,
-    2063:  60,
-}
 
 
 # ══════════════════════════════════════════════════════════════════════════

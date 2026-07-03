@@ -19,52 +19,21 @@ import os
 import signal
 import subprocess
 import sys
+import json
 
 from session import SessionManager, DATA_DIR, SCRIPT_DIR
 from espar_client import EsparClient
 from calibration import Calibrator
 
-from wknn import load_radio_map
-from validate import load_test_set, load_optimal_k, optimize_k, run_validation
+from wknn import load_radio_map, save_distance_metric
+import wknn
+from validate import load_test_set, load_optimal_k, load_optimal_beacon_id, optimize_k, run_validation
 from telnet_reader import get_espar_stream
-
-
-def select_beacon_id(default: int = 28) -> int:
-    """Pozwala użytkownikowi wybrać beacon z bazy danych lub wpisać ręcznie."""
-    try:
-        radio_map = load_radio_map()
-        beacons_in_db = set()
-        for fp in radio_map:
-            beacons_in_db.update(int(b) for b in fp.get("beacons", {}).keys())
-        db_beacons = sorted(list(beacons_in_db))
-    except Exception:
-        db_beacons = []
-
-    if db_beacons:
-        print("\n  Dostępne beacony w bazie:")
-        for idx, bid in enumerate(db_beacons, 1):
-            print(f"    {idx} - Beacon #{bid}")
-        print(f"  Wybierz numer (1-{len(db_beacons)}) lub wpisz bezpośrednio ID beacona (domyślnie #{default}):")
-        ans = input("  Wybór -> ").strip()
-        if not ans:
-            return default
-        try:
-            val = int(ans)
-            if 1 <= val <= len(db_beacons):
-                return db_beacons[val - 1]
-            return val
-        except ValueError:
-            print("  [!] Nieprawidłowy wybór. Używam wartości domyślnej.")
-            return default
-    else:
-        ans = input(f"\n  Podaj ID beacona (domyślnie #{default}): ").strip()
-        if not ans:
-            return default
-        try:
-            return int(ans)
-        except ValueError:
-            print("  [!] Nieprawidłowy wybór. Używam wartości domyślnej.")
-            return default
+from config import OPTIMAL_K_PATH, PORT_NAMES
+from utils import (
+    get_beacons_from_radio_map, build_beacon_candidates,
+    select_beacon_interactive, select_beacon_interactive as select_beacon_id
+)
 
 
 def main():
@@ -83,17 +52,17 @@ def main():
                 if sess else "BRAK -- ustaw przed kalibracja (opcja 1)"
             )
             
-            n_test  = len(load_test_set())
-            n_radio = len(load_radio_map())
+            n_test  = len(load_test_set(filter_session=True))
+            n_radio = len(load_radio_map(filter_session=True))
             best_k  = load_optimal_k(default=3)
             k_info  = str(best_k)
 
-            port_names = {8893: "espar07", 8894: "espar37", 8895: "espar35"}
-            antenna_info = f"{client.port} ({port_names.get(client.port, 'nieznana')})"
+            antenna_info = f"{client.port} ({PORT_NAMES.get(client.port, 'nieznana')})"
 
             print("\n=== SYSTEM LOKALIZACJI ESPAR ===")
             print(f"  Sesja:     {sess_info}")
             print(f"  Antena:    {antenna_info}")
+            print(f"  Metryka:   {wknn.DISTANCE_METRIC}")
             print(f"  Radio map: {n_radio} pkt  |  Zbior testowy: {n_test} pkt  |  K_opt: {k_info}")
             print("  ---- Kalibracja ----------------------------------------")
             print("  1 - Punkt orientacyjny        (ustaw origin siatki)")
@@ -107,6 +76,7 @@ def main():
             print("  7 - Analiza bledow            (RMSE, P90, CDF)")
             print("  ---- Konfiguracja --------------------------------------")
             print("  8 - Zmiana portu anteny ESPAR (aktualnie: " + f"{antenna_info})")
+            print("  9 - Zmiana metryki odległości (aktualnie: " + f"{wknn.DISTANCE_METRIC})")
             print("  ---------------------------------------------------------")
             print("  0 - Wyjscie")
 
@@ -133,54 +103,17 @@ def main():
             elif choice == "3":
                 viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
                 
-                # Odczytaj beacony z bazy danych (radio_map.json)
-                try:
-                    radio_map = load_radio_map()
-                    beacons_in_db = set()
-                    for fp in radio_map:
-                        beacons_in_db.update(int(b) for b in fp.get("beacons", {}).keys())
-                    db_beacons = sorted(list(beacons_in_db))
-                except Exception:
-                    db_beacons = []
-
-                # Skanowanie aktywnych beaconów w otoczeniu
+                db_beacons = get_beacons_from_radio_map()
                 try:
                     available = calibrator._scan_available_beacons()
                 except Exception as e:
                     print(f"  [!] Błąd skanowania: {e}")
                     available = []
                 
-                # Zbuduj unikalną listę wszystkich kandydatów (z otoczenia i bazy)
-                all_candidates = []
-                for b in available:
-                    if b not in all_candidates:
-                        all_candidates.append(b)
-                for b in db_beacons:
-                    if b not in all_candidates:
-                        all_candidates.append(b)
-                
-                if not all_candidates:
-                    all_candidates = [28]
-
-                print("\n  Dostępne beacony (wykryte w zasięgu i/lub obecne w bazie):")
-                for idx, bid in enumerate(all_candidates, 1):
-                    in_db_str = " [w bazie]" if bid in db_beacons else " [brak w bazie]"
-                    detected_str = " [wykryty]" if bid in available else ""
-                    print(f"    {idx} - Beacon #{bid}{in_db_str}{detected_str}")
-                
-                print(f"\n  Wybierz beacon do podglądu (wpisz numer 1-{len(all_candidates)} lub bezpośrednio ID beacona, domyślnie {all_candidates[0]}):")
-                ans = input("  Wybór -> ").strip()
-                
-                selected_beacon = all_candidates[0]
-                if ans:
-                    try:
-                        val = int(ans)
-                        if 1 <= val <= len(all_candidates):
-                            selected_beacon = all_candidates[val - 1]
-                        else:
-                            selected_beacon = val
-                    except ValueError:
-                        print("  [!] Nieprawidłowy wybór. Używam domyślnego beacona.")
+                all_candidates = build_beacon_candidates(available, db_beacons)
+                selected_beacon = select_beacon_interactive(
+                    all_candidates, db_beacons, available, "podglądu"
+                )
                 
                 print(f"Otwieram mape z punktami kalibracyjnymi dla Beacona #{selected_beacon}...")
                 try:
@@ -196,7 +129,15 @@ def main():
                     if not sub:
                         break
                     if sub == "2":
-                        bid = select_beacon_id(default=28)
+                        db_beacons = get_beacons_from_radio_map()
+                        try:
+                            available = calibrator._scan_available_beacons()
+                        except Exception as e:
+                            print(f"  [!] Błąd skanowania: {e}")
+                            available = []
+                        all_candidates = build_beacon_candidates(available, db_beacons)
+                        bid = select_beacon_interactive(all_candidates, db_beacons, available, "analizy RSSI")
+
                         from rssi_analysis import run_rssi_analysis
                         run_rssi_analysis(
                             connect_fn=client.connect_and_start,
@@ -208,7 +149,13 @@ def main():
                         )
                         break
                     elif sub == "1":
-                        bid = select_beacon_id(default=28)
+                        db_beacons = get_beacons_from_radio_map()
+                        if not db_beacons:
+                            print("  [!] Brak beaconów w bazie odcisków.")
+                            break
+                        # Analiza offline — nie skanujemy aktywnych urządzeń
+                        bid = select_beacon_interactive(db_beacons, db_beacons, [], "analizy RSSI offline")
+
                         from rssi_analysis import run_rssi_offline
                         run_rssi_offline(beacon_id=bid)
                         break
@@ -223,54 +170,17 @@ def main():
                     if not sub:
                         break
                     if sub == "g":
-                        # Odczytaj beacony z bazy danych (radio_map.json)
-                        try:
-                            radio_map = load_radio_map()
-                            beacons_in_db = set()
-                            for fp in radio_map:
-                                beacons_in_db.update(int(b) for b in fp.get("beacons", {}).keys())
-                            db_beacons = sorted(list(beacons_in_db))
-                        except Exception:
-                            db_beacons = []
-
-                        # Skanowanie aktywnych beaconów w otoczeniu
+                        db_beacons = get_beacons_from_radio_map()
                         try:
                             available = calibrator._scan_available_beacons()
                         except Exception as e:
                             print(f"  [!] Błąd skanowania: {e}")
                             available = []
                         
-                        # Zbuduj unikalną listę wszystkich kandydatów (z otoczenia i bazy)
-                        all_candidates = []
-                        for b in available:
-                            if b not in all_candidates:
-                                all_candidates.append(b)
-                        for b in db_beacons:
-                            if b not in all_candidates:
-                                all_candidates.append(b)
-                        
-                        if not all_candidates:
-                            all_candidates = [28]
-
-                        print("\n  Dostępne beacony (wykryte w zasięgu i/lub obecne w bazie):")
-                        for idx, bid in enumerate(all_candidates, 1):
-                            in_db_str = " [w bazie]" if bid in db_beacons else " [brak w bazie]"
-                            detected_str = " [wykryty]" if bid in available else ""
-                            print(f"    {idx} - Beacon #{bid}{in_db_str}{detected_str}")
-                        
-                        print(f"\n  Wybierz beacon do zbierania punktów testowych (wpisz numer 1-{len(all_candidates)} lub bezpośrednio ID beacona, domyślnie {all_candidates[0]}):")
-                        ans = input("  Wybór -> ").strip()
-                        
-                        selected_beacon = all_candidates[0]
-                        if ans:
-                            try:
-                                val = int(ans)
-                                if 1 <= val <= len(all_candidates):
-                                    selected_beacon = all_candidates[val - 1]
-                                else:
-                                    selected_beacon = val
-                            except ValueError:
-                                print("  [!] Nieprawidłowy wybór. Używam domyślnego beacona.")
+                        all_candidates = build_beacon_candidates(available, db_beacons)
+                        selected_beacon = select_beacon_interactive(
+                            all_candidates, db_beacons, available, "zbierania punktów testowych"
+                        )
 
                         print(f"\nOtwieram tryb graficznego zbierania dla Beacona #{selected_beacon}...")
                         viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
@@ -303,43 +213,33 @@ def main():
                                 if k_val < 1:
                                     raise ValueError
                                 
-                                # Auto-wykrywanie beacona bez pytania użytkownika
-                                try:
-                                    radio_map = load_radio_map()
-                                    beacons_in_db = set()
-                                    for fp in radio_map:
-                                        beacons_in_db.update(int(b) for b in fp.get("beacons", {}).keys())
-                                    bid = sorted(list(beacons_in_db))[0] if beacons_in_db else 28
-                                except Exception:
-                                    bid = 28
+                                # Wyznacz automatycznie główny beacon
+                                beacons = get_beacons_from_radio_map()
+                                bid = beacons[0] if beacons else 28
                                     
                                 os.makedirs(DATA_DIR, exist_ok=True)
-                                import json as _json
-                                with open(os.path.join(DATA_DIR, "optimal_k.json"), "w",
-                                          encoding="utf-8") as _f:
-                                    _json.dump({"k": k_val, "beacon_id": bid,
-                                                "source": "manual"}, _f, indent=2)
+                                with open(OPTIMAL_K_PATH, "w", encoding="utf-8") as f:
+                                    json.dump({"k": k_val, "beacon_id": bid,
+                                               "source": "manual"}, f, indent=2)
                                 print(f"  [OK] Zapisano K={k_val} (reczny dobor).")
                                 break
                             except ValueError:
                                 print("  [!] Nieprawidlowa wartosc K. Podaj liczbe dodatnia.")
                         break
                     elif sub == "a":
-                        # Auto-wykrywanie beacona bez pytania użytkownika
-                        try:
-                            radio_map = load_radio_map()
-                            beacons_in_db = set()
-                            for fp in radio_map:
-                                beacons_in_db.update(int(b) for b in fp.get("beacons", {}).keys())
-                            bid = sorted(list(beacons_in_db))[0] if beacons_in_db else 28
-                        except Exception:
-                            bid = 28
+                        beacons = get_beacons_from_radio_map()
+                        bid = beacons[0] if beacons else 28
                         optimize_k(beacon_id=bid)
                         break
                     else:
                         print("  [!] Nieprawidłowy wybór. Wpisz 'a' lub 'r' (lub wciśnij Enter aby powrócić).")
             elif choice == "7":
-                bid = select_beacon_id(default=28)
+                db_beacons = get_beacons_from_radio_map()
+                if not db_beacons:
+                    print("  [!] Brak danych w bazie odcisków. Walidacja niemożliwa.")
+                    continue
+                # Automatycznie pobierz beacon_id (z pliku optimal_k.json lub pierwszego z bazy) bez pytań w CLI
+                bid = load_optimal_beacon_id(default=db_beacons[0])
                 run_validation(k=None, beacon_id=bid)
             elif choice == "8":
                 print("\n  Wybierz port anteny ESPAR:")
@@ -350,34 +250,44 @@ def main():
                     sub = input("  Wybierz [1/2/3] (lub Enter aby powrócić): ").strip()
                     if not sub:
                         break
-                    if sub == "1":
-                        client.port = 8893
-                        client.save_port_to_config(8893)
-                        print("  [OK] Zmieniono port na 8893 (espar07).")
-                        break
-                    elif sub == "2":
-                        client.port = 8894
-                        client.save_port_to_config(8894)
-                        print("  [OK] Zmieniono port na 8894 (espar37).")
-                        break
-                    elif sub == "3":
-                        client.port = 8895
-                        client.save_port_to_config(8895)
-                        print("  [OK] Zmieniono port na 8895 (espar35).")
+                    if sub in ("1", "2", "3"):
+                        ports = {"1": 8893, "2": 8894, "3": 8895}
+                        names = {"1": "espar07", "2": "espar37", "3": "espar35"}
+                        port = ports[sub]
+                        client.port = port
+                        client.save_port_to_config(port)
+                        print(f"  [OK] Zmieniono port na {port} ({names[sub]}).")
                         break
                     else:
                         print("  [!] Nieprawidłowy wybór. Wpisz '1', '2' lub '3' (lub wciśnij Enter aby powrócić).")
+            elif choice == "9":
+                print("\n  Wybierz metrykę odległości:")
+                print("    1 - Pearson (korelacja kształtu sygnału, domyślna)")
+                print("    2 - Euclidean (odległość geometryczna, wymaga stabilnego sygnału)")
+                while True:
+                    sub = input("  Wybierz [1/2] (lub Enter aby powrócić): ").strip()
+                    if not sub:
+                        break
+                    if sub == "1":
+                        save_distance_metric("pearson")
+                        print("  [OK] Zmieniono metrykę na 'pearson'.")
+                        break
+                    elif sub == "2":
+                        save_distance_metric("euclidean")
+                        print("  [OK] Zmieniono metrykę na 'euclidean'.")
+                        break
+                    else:
+                        print("  [!] Nieprawidłowy wybór. Wpisz '1' lub '2' (lub wciśnij Enter aby powrócić).")
             elif choice == "0":
                 print("Do widzenia.")
                 break
             else:
-                print("Nieprawidlowy wybor. Wpisz 0-8.")
+                print("Nieprawidlowy wybor. Wpisz 0-9.")
 
         except KeyboardInterrupt:
             print("\n")
             continue
 
 if __name__ == "__main__":
-    # Wycisz ostrzeżenia Qt/Wayland — dotyczy procesów potomnych (xdg-open, przeglądarki)
     os.environ["QT_LOGGING_RULES"] = "qt.*=false"
     main()

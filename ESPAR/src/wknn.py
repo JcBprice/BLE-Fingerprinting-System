@@ -61,24 +61,27 @@ import json
 import math
 import os
 
-# ── Ścieżka do pliku mapy radiowej ──────────────────────────────────────────
-RADIO_MAP_PATH = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "data", "radio_map.json")
-)
+from config import get_radio_map_path
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # Operacje I/O na mapie radiowej
 # ════════════════════════════════════════════════════════════════════════════
 
-def load_radio_map(path: str = RADIO_MAP_PATH) -> list:
+def load_radio_map(path: str = None, filter_session: bool = False) -> list:
     """
     Wczytuje mapę radiową z pliku JSON.
+
+    Args:
+        path: Ścieżka do pliku (None = użyj dynamicznej z get_radio_map_path()).
+        filter_session: Jeśli True, zwraca tylko punkty dopasowane do aktywnej sesji z session.json.
 
     Returns:
         Lista punktów kalibracyjnych (słowniki). Pusta lista jeśli plik
         nie istnieje lub jest w nieobsługiwanym formacie.
     """
+    if path is None:
+        path = get_radio_map_path()
     if not os.path.exists(path):
         return []
     try:
@@ -86,83 +89,43 @@ def load_radio_map(path: str = RADIO_MAP_PATH) -> list:
             data = json.load(f)
     except (json.JSONDecodeError, ValueError):
         return []
-    # Stary format — słownik zamiast listy (brak współrzędnych pozycji)
     if isinstance(data, dict):
         return []
         
-    normalized_data = []
-    for entry in data:
-        if not isinstance(entry, dict):
-            continue
-        if "beacons" in entry:
-            # Old format or already nested format
-            normalized_data.append(entry)
-        elif "beacon_id" in entry and ("average_rssi" in entry or "normalized_rssi" in entry):
-            # Flat format - convert to nested format
-            bid_str = str(entry.get("beacon_id"))
-            nested_entry = {
-                "label": entry.get("label", ""),
-                "x_m": entry.get("x_m", 0.0),
-                "y_m": entry.get("y_m", 0.0),
-                "beacons": {
-                    bid_str: {
-                        "avg": entry.get("average_rssi", {}),
-                        "norm": entry.get("normalized_rssi", {})
-                    }
-                }
-            }
-            if "x_local" in entry:
-                nested_entry["_local"] = {
-                    "x": entry["x_local"],
-                    "y": entry.get("y_local", 0.0),
-                    "session": entry.get("origin_label", "")
-                }
-            normalized_data.append(nested_entry)
-        else:
-            normalized_data.append(entry)
-            
-    return normalized_data
+    entries = [entry for entry in data if isinstance(entry, dict) and "beacons" in entry]
+    
+    if filter_session and os.path.basename(path) == "radio_map.json":
+        from config import SESSION_PATH
+        if os.path.exists(SESSION_PATH):
+            try:
+                with open(SESSION_PATH, encoding='utf-8') as f:
+                    s = json.load(f)
+                sess = ""
+                if "origin_label" in s:
+                    sess = s["origin_label"]
+                elif "active_session" in s and isinstance(s["active_session"], dict):
+                    sess = s["active_session"].get("origin_label", "")
+                if sess and sess != 'unknown':
+                    entries = [e for e in entries if e.get("_local", {}).get("session") == sess]
+            except Exception:
+                pass
+                
+    return entries
 
 
-def save_radio_map(fingerprints: list, path: str = RADIO_MAP_PATH) -> None:
+def save_radio_map(fingerprints: list, path: str = None) -> None:
     """
     Zapisuje listę punktów kalibracyjnych do pliku JSON.
 
     Args:
         fingerprints: Lista punktów kalibracyjnych (jak zwrócona przez load_radio_map).
-        path:         Ścieżka docelowa pliku. Domyślnie RADIO_MAP_PATH.
+        path:         Ścieżka docelowa pliku (None = użyj dynamicznej z get_radio_map_path()).
     """
+    if path is None:
+        path = get_radio_map_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(fingerprints, f, indent=2, ensure_ascii=False)
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# Funkcje pomocnicze
-# ════════════════════════════════════════════════════════════════════════════
-
-def normalize_rssi(avg_rssi: dict) -> dict:
-    """
-    Normalizacja min-max wektora RSSI do zakresu [0.0 .. 1.0].
-
-    Wzór: norm_i = (rssi_i − min) / (max − min)
-
-    Normalizacja eliminuje wpływ bezwzględnego poziomu sygnału (np. różnice
-    odległości beacon–antena), pozostawiając jedynie informację o kierunkowości.
-
-    Args:
-        avg_rssi: Słownik {char_int_str: avg_rssi_dBm}.
-
-    Returns:
-        Słownik {char_int_str: wartość_znormalizowana}.
-    """
-    if not avg_rssi:
-        return {}
-    vals = list(avg_rssi.values())
-    mn, mx = min(vals), max(vals)
-    if mx == mn:
-        return {k: 0.0 for k in avg_rssi}  # wszystkie wartości identyczne
-    return {k: round((v - mn) / (mx - mn), 4) for k, v in avg_rssi.items()}
 
 
 def _get_directions(radio_map: list, beacon_id: int) -> list:
@@ -170,9 +133,8 @@ def _get_directions(radio_map: list, beacon_id: int) -> list:
     Zwraca posortowaną listę wszystkich kluczy konfiguracji ESPAR (char_int
     jako stringi), które występują w mapie radiowej.
 
-    Zbiera konfiguracje anteny ze WSZYSTKICH wpisów i beakonów, ponieważ
-    wzorzec RSSI anteny ESPAR zależy od kierunku sygnału, nie od konkretnego
-    nadajnika BLE. Odciski z różnych beaconów są wymienne.
+    Zbiera konfiguracje kierunkowe anteny ze wszystkich wpisów, ponieważ
+    zbiór możliwych stanów przełączanych jest stałą cechą sprzętową anteny ESPAR.
     """
     dirs = set()
     for fp in radio_map:
@@ -183,36 +145,8 @@ def _get_directions(radio_map: list, beacon_id: int) -> list:
     return sorted(dirs, key=lambda x: int(x))
 
 
-def _fp_vector(fp: dict, beacon_id: int, directions: list) -> list:
-    """
-    Buduje wektor RSSI dla jednego punktu kalibracyjnego.
-
-    Preferuje dane dla konkretnego beacon_id jeśli są dostępne w tym wpisie.
-    W przeciwnym razie używa danych z pierwszego dostępnego beacona
-    (odciski z różnych beaconów są wymienne w systemie ESPAR).
-
-    Dla brakujących konfiguracji przyjmuje wartość -95.0 dBm (typowy dolny
-    próg czułości odbiornika BLE — kara za brak danych).
-
-    Args:
-        fp:         Punkt kalibracyjny z mapy radiowej.
-        beacon_id:  Numer beacona BLE (preferowany, z fallback na dowolny).
-        directions: Posortowana lista kluczy konfiguracji (z _get_directions).
-
-    Returns:
-        Lista float w kolejności zgodnej z 'directions'.
-    """
-    beacons = fp.get("beacons", {})
-    if not beacons:
-        return [-95.0] * len(directions)
-    bid_str = str(beacon_id)
-    if bid_str in beacons:
-        avg = beacons[bid_str].get("avg", {})
-    else:
-        # Fallback: użyj pierwszego dostępnego beacona (wzorzec zależy od pozycji)
-        first_bid = next(iter(beacons))
-        avg = beacons[first_bid].get("avg", {})
-    return [float(avg.get(d, -95.0)) for d in directions]
+# _fp_vector został usunięty zgodnie z życzeniem usuwania stałej -95 dBm.
+# Odległość jest teraz wyliczana tylko na przecięciu rzeczywiście odebranych kierunków.
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -276,13 +210,39 @@ def _euclidean_distance(v1: list, v2: list) -> float:
 # Wybór metryki odległości
 # ════════════════════════════════════════════════════════════════════════════
 
+def load_distance_metric() -> str:
+    """Wczytuje wybraną metrykę odległości z pliku konfiguracyjnego."""
+    from config import ESPAR_CONFIG_PATH
+    if os.path.exists(ESPAR_CONFIG_PATH):
+        try:
+            with open(ESPAR_CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f).get("metric", "pearson")
+        except Exception:
+            pass
+    return "pearson"
+
+def save_distance_metric(metric: str) -> None:
+    """Zapisuje wybraną metrykę do pliku konfiguracyjnego i aktualizuje zmienną globalną."""
+    global DISTANCE_METRIC
+    DISTANCE_METRIC = metric
+    from config import ESPAR_CONFIG_PATH
+    try:
+        cfg = {}
+        if os.path.exists(ESPAR_CONFIG_PATH):
+            try:
+                with open(ESPAR_CONFIG_PATH, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+            except Exception:
+                pass
+        cfg["metric"] = metric
+        with open(ESPAR_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[!] Błąd zapisu konfiguracji metryki: {e}")
+
 # Zmień tę wartość aby przełączyć metrykę używaną w wknn_estimate().
-#
-# Metryka          │ Zakres      │ Sortowanie top-K │ Uwagi
-# ─────────────────┼─────────────┼──────────────────┼──────────────────────────────
-# 'pearson'        │ [0, 2]      │ rosnąco (min)    │ d = 1−r, kształt wektora
-# 'euclidean'      │ [0, +∞)     │ rosnąco (min)    │ wymaga normalizacji RSS
-DISTANCE_METRIC: str = 'pearson'  # <- zmień na 'euclidean' aby porównać
+# Obsługiwane wartości: 'pearson', 'euclidean'
+DISTANCE_METRIC: str = load_distance_metric()
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -297,7 +257,8 @@ def wknn_estimate(window_data: dict, radio_map: list,
     Algorytm:
         1. Wyciągnij dane RSSI dla danego beacona z okna czasowego.
         2. Oblicz średnie RSSI per konfiguracja anteny → wektor V_live.
-        3. Dla każdego fingerprinta z mapy oblicz odległość do V_live.
+        3. Dla każdego fingerprinta z mapy oblicz odległość do V_live
+           korzystając tylko ze wspólnych, zmierzonych kierunków (bez kar -95 dBm).
         4. Wybierz K najbliższych sąsiadów.
         5. Wylicz pozycję jako ważoną sumę (waga = 1 / d²) ich współrzędnych.
 
@@ -327,44 +288,61 @@ def wknn_estimate(window_data: dict, radio_map: list,
         return None
 
     # 3. Uśrednij RSSI z okna dla każdej konfiguracji anteny.
-    #    Porównujemy tylko konfiguracje z rzeczywistymi pomiarami.
+    #    Pomijamy wartości równe -95.0, aby nie brać ich pod uwagę.
     raw_avg = {}
     valid_dirs = []
     for d in directions:
-        # Klucz może być stringiem lub intem — sprawdzamy oba warianty
         vals = b_data.get(d) or b_data.get(str(d)) or b_data.get(int(d))
         if vals:
-            raw_avg[str(d)] = sum(vals) / len(vals)
-            valid_dirs.append(str(d))
+            avg_val = sum(vals) / len(vals)
+            if avg_val != -95.0:
+                raw_avg[str(d)] = avg_val
+                valid_dirs.append(str(d))
 
-    # Odrzuć okno, jeśli danych jest zbyt mało (mniej niż połowa konfiguracji)
-    if len(valid_dirs) < 6:
+    # Odrzuć okno, jeśli danych jest zbyt mało (mniej niż 4 konfiguracje)
+    if len(valid_dirs) < 4:
         return None
 
-    live_vec = [raw_avg[d] for d in valid_dirs]
-
     # 4. Oblicz odległości do wszystkich punktów kalibracyjnych
-    #
-    # Obie dostępne metryki zwracają wartość, gdzie MNIEJSZA = lepsze dopasowanie:
-    #   Pearson:   d = 1−r ∈ [0, 2]   (r=1 → d=0 = idealny, r=−1 → d=2 = antykorelacja)
-    #   Euklides:  d ∈ [0, +∞)        (d=0 = identyczne wektory)
-    # W obu przypadkach sortujemy rosnąco i wybieramy K pierwszych.
     dists = []
     for fp in radio_map:
-        # Porównuj ze WSZYSTKIMI punktami — wzorzec RSSI anteny ESPAR zależy
-        # od kierunku do źródła sygnału, nie od konkretnego nadajnika BLE.
-        # Dzięki temu mapa z różnych beaconów pokrywa pełen zakres X i Y.
         if "beacons" not in fp or not fp["beacons"]:
             continue
-        # Budujemy wektor odcisków radiowych (preferuje pasujący beacon, fallback na dostępny)
-        fp_vec = _fp_vector(fp, beacon_id, valid_dirs)
+        
+        beacons = fp["beacons"]
+        bid_str = str(beacon_id)
+        if bid_str in beacons:
+            fp_avg = beacons[bid_str].get("avg", {})
+        else:
+            first_bid = next(iter(beacons))
+            fp_avg = beacons[first_bid].get("avg", {})
+            
+        # Filtrujemy kierunki — bierzemy tylko te, które są obecne w OBU wektorach
+        # i nie są równe -95.0 (kara z ewentualnych starszych baz danych)
+        common_dirs = []
+        for d in valid_dirs:
+            val_ref = fp_avg.get(d) or fp_avg.get(str(d)) or fp_avg.get(int(d))
+            if val_ref is not None and float(val_ref) != -95.0:
+                common_dirs.append(d)
+                
+        # Wymagamy co najmniej 4 wspólnych kierunków
+        if len(common_dirs) < 4:
+            continue
+            
+        live_subvec = [raw_avg[d] for d in common_dirs]
+        fp_subvec = [float(fp_avg.get(d) or fp_avg.get(str(d)) or fp_avg.get(int(d))) for d in common_dirs]
+        
         if DISTANCE_METRIC == 'euclidean':
-            d = _euclidean_distance(live_vec, fp_vec)
+            d = _euclidean_distance(live_subvec, fp_subvec)
         else:  # 'pearson' (domyślne)
-            d = _pearson_distance(live_vec, fp_vec)
-        dists.append((d, fp["x_m"], fp["y_m"], fp.get("label", "")))
+            d = _pearson_distance(live_subvec, fp_subvec)
+            
+        dists.append((d, fp["x_m"], fp["y_m"], fp.get("label", ""), len(common_dirs)))
 
-    # Sortowanie rosnąco — mniejsza odległość = lepsze dopasowanie (obie metryki)
+    if not dists:
+        return None
+
+    # Sortowanie rosnąco — mniejsza odległość = lepsze dopasowanie
     dists.sort(key=lambda t: t[0])
     k = min(k, len(dists))
     top_k = dists[:k]
@@ -374,23 +352,26 @@ def wknn_estimate(window_data: dict, radio_map: list,
     if top_k[0][0] < EPS:
         return top_k[0][1], top_k[0][2], 1.0
 
-    # 6. Ważona suma współrzędnych K sąsiadów (waga = 1 / d²)
-    weights = [1.0 / (d ** 2 + EPS) for d, *_ in top_k]
+    # 6. Ważona suma współrzędnych K sąsiadów.
+    # Dodajemy małe wygładzenie (alpha = 0.05), aby zapobiec "przyklejaniu" się (snapping)
+    # pozycji do punktów referencyjnych w przypadku bardzo małych odległości d.
+    # Umożliwia to płynną estymację pozycji beacona pomiędzy punktami.
+    alpha = 0.05
+    weights = [1.0 / ((d + alpha) ** 2) for d, *_ in top_k]
     total_w = sum(weights)
-    x_est = sum(w * x for w, (_, x, y, __) in zip(weights, top_k)) / total_w
-    y_est = sum(w * y for w, (_, x, y, __) in zip(weights, top_k)) / total_w
+    x_est = sum(w * x for w, (_, x, y, *_) in zip(weights, top_k)) / total_w
+    y_est = sum(w * y for w, (_, x, y, *_) in zip(weights, top_k)) / total_w
 
-    # 7. Pewność (confidence) — zależna od metryki:
+    # 7. Pewność (confidence)
     d_min = top_k[0][0]
     if DISTANCE_METRIC == 'euclidean':
-        # Euklides: d ∈ [0, +∞) — normalizujemy przez d_max spośród top_k.
-        # conf = 1 − d_min/d_max ∈ [0, 1]; pełna pewność gdy d_min=0,
-        # zero gdy d_min = d_max (wszystkie K punktów jednakowo odległe).
-        d_max = top_k[-1][0]
-        confidence = 1.0 - (d_min / d_max) if d_max > EPS else 1.0
+        # Euklides: d_min to pierwiastek z sumy kwadratów różnic RSSI.
+        # Przeliczamy na średni błąd na kierunek i mapujemy wykładniczo:
+        # e_avg = d_min / sqrt(n_dirs). Przy e_avg = 0 dB -> 100%, 10 dB -> ~37%
+        n_dirs = top_k[0][4]
+        e_avg = d_min / math.sqrt(n_dirs) if n_dirs > 0 else 0.0
+        confidence = math.exp(-e_avg / 10.0)
     else:
-        # Pearson: d = 1−r ∈ [0, 2] — mapujemy liniowo na [0, 1].
-        # conf = 1 − d_min  (d=0 → conf=1, d=1 → conf=0, d>1 → obcięte do 0)
         confidence = max(0.0, min(1.0, 1.0 - d_min))
 
     return round(x_est, 3), round(y_est, 3), round(confidence, 3)

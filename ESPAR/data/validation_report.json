@@ -1,111 +1,102 @@
 {
   "config": {
-    "k": 4,
+    "k": 9,
     "beacon_id": 28,
     "metric": "pearson",
-    "n_test": 10,
+    "n_test": 9,
     "n_radio_map": 63
   },
   "stats": {
-    "n": 10,
-    "mean": 2.8403859550394595,
-    "rmse": 3.6916350307147097,
-    "max": 7.456720257593144,
-    "min": 0.17773013250430977,
-    "p50": 2.2158422777806184,
-    "p75": 2.7596465353374544,
-    "p90": 6.998310438955962
+    "n": 9,
+    "mean": 1.5317412390805463,
+    "rmse": 1.778243390415259,
+    "max": 3.0396527762229693,
+    "min": 0.4891952575403808,
+    "p50": 1.5994264597036025,
+    "p75": 2.3772576637798437,
+    "p90": 3.0396527762229693
   },
   "results": [
     {
-      "label": "test_pt01",
-      "x_true": 27.612,
-      "y_true": 8.549,
-      "x_est": 29.855,
-      "y_est": 7.396,
-      "error_m": 2.522,
-      "confidence": 0.819
+      "label": "drzwi709",
+      "x_true": 25.761,
+      "y_true": 8.556,
+      "x_est": 27.035,
+      "y_est": 7.589,
+      "error_m": 1.5994,
+      "confidence": 0.797
     },
     {
-      "label": "test_pt02",
-      "x_true": 29.555,
-      "y_true": 8.548,
-      "x_est": 30.244,
-      "y_est": 6.442,
-      "error_m": 2.2158,
+      "label": "drzwi707",
+      "x_true": 29.571,
+      "y_true": 8.537,
+      "x_est": 29.571,
+      "y_est": 7.957,
+      "error_m": 0.58,
+      "confidence": 0.972
+    },
+    {
+      "label": "espar36",
+      "x_true": 28.354,
+      "y_true": 7.345,
+      "x_est": 28.844,
+      "y_est": 7.661,
+      "error_m": 0.5831,
+      "confidence": 0.893
+    },
+    {
+      "label": "espar37",
+      "x_true": 25.907,
+      "y_true": 7.381,
+      "x_est": 23.584,
+      "y_est": 6.876,
+      "error_m": 2.3773,
+      "confidence": 0.93
+    },
+    {
+      "label": "espar38",
+      "x_true": 23.394,
+      "y_true": 7.411,
+      "x_est": 23.15,
+      "y_est": 6.987,
+      "error_m": 0.4892,
+      "confidence": 0.971
+    },
+    {
+      "label": "lewydolny",
+      "x_true": 20.635,
+      "y_true": 8.849,
+      "x_est": 22.901,
+      "y_est": 7.775,
+      "error_m": 2.5076,
+      "confidence": 0.833
+    },
+    {
+      "label": "drzwi712",
+      "x_true": 25.761,
+      "y_true": 6.155,
+      "x_est": 28.561,
+      "y_est": 7.338,
+      "error_m": 3.0397,
+      "confidence": 0.761
+    },
+    {
+      "label": "obok 710",
+      "x_true": 30.29,
+      "y_true": 6.536,
+      "x_est": 29.917,
+      "y_est": 7.307,
+      "error_m": 0.8565,
       "confidence": 0.984
     },
     {
-      "label": "test_pt03",
-      "x_true": 20.563,
-      "y_true": 7.281,
-      "x_est": 27.528,
-      "y_est": 6.599,
-      "error_m": 6.9983,
-      "confidence": 0.638
-    },
-    {
-      "label": "test_pt04",
-      "x_true": 22.713,
-      "y_true": 6.209,
-      "x_est": 23.458,
-      "y_est": 7.774,
-      "error_m": 1.7333,
-      "confidence": 0.921
-    },
-    {
-      "label": "test_pt05",
-      "x_true": 25.034,
-      "y_true": 8.513,
-      "x_est": 23.896,
-      "y_est": 7.385,
-      "error_m": 1.6023,
-      "confidence": 0.773
-    },
-    {
-      "label": "test_pt06",
-      "x_true": 29.58,
-      "y_true": 7.279,
-      "x_est": 29.442,
-      "y_est": 7.391,
-      "error_m": 0.1777,
-      "confidence": 0.988
-    },
-    {
-      "label": "test_pt07",
-      "x_true": 25.836,
-      "y_true": 7.295,
-      "x_est": 28.571,
-      "y_est": 7.663,
-      "error_m": 2.7596,
-      "confidence": 0.876
-    },
-    {
-      "label": "test_pt08",
-      "x_true": 31.066,
-      "y_true": 7.335,
-      "x_est": 23.667,
-      "y_est": 8.261,
-      "error_m": 7.4567,
-      "confidence": 0.783
-    },
-    {
-      "label": "test_pt09",
-      "x_true": 31.053,
-      "y_true": 6.192,
-      "x_est": 29.033,
-      "y_est": 7.942,
-      "error_m": 2.6726,
-      "confidence": 0.931
-    },
-    {
-      "label": "test_pt10",
-      "x_true": 23.482,
-      "y_true": 7.372,
-      "x_est": 23.412,
-      "y_est": 7.116,
-      "error_m": 0.2654,
-      "confidence": 0.925
+      "label": "pomiedzy712_716",
+      "x_true": 23.835,
+      "y_true": 6.228,
+      "x_est": 23.893,
+      "y_est": 7.98,
+      "error_m": 1.753,
+      "confidence": 0.818
     }
   ]
 }

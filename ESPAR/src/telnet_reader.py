@@ -71,21 +71,15 @@ def parse_beacon_data(json_line: str) -> dict | None:
         except ValueError:
             return None  # uszkodzone pola numeryczne
 
-        # Filtrowanie kanałów BLE wyłączone na prośbę użytkownika (wszystkie beacony na ch 37, ale formaty mogą być rozjechane)
-        # if ble_chan not in (37, 38, 39):
-        #     return None
-
         # Filtruj anomalne/uszkodzone wartości RSSI (np. szum pomiarowy powyżej -10 lub poniżej -110 dBm)
         rssi_dbm = -1 * rssi_abs
         if rssi_dbm > -10 or rssi_dbm < -110:
             return None
 
         # Filtruj psujące/anomalne konfiguracje anteny:
-        # - w każdym kierunku (wszystkie dyrektory włączone / 4095)
-        # - z wyłączonymi dyrektorami (wszystkie reflektory włączone / 0)
-        # - dodatkowo upewnij się, że charakterystyka należy do 12 poprawnych kierunków (VALID_CHARS)
-        valid_directional = {31, 62, 124, 248, 496, 992, 1984, 3968, 3841, 3587, 3079, 2063}
-        if char_val not in valid_directional:
+        # Charakterystyka musi należeć do 12 poprawnych kierunków (VALID_CHARS)
+        from config import VALID_CHARS
+        if char_val not in VALID_CHARS:
             return None
 
         # Opcjonalne pola GPS (dostępne tylko gdy beacon ma odbiornik GPS)

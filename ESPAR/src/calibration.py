@@ -5,73 +5,18 @@ import json
 import math
 import socket
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-from session import SessionManager
+from session import SessionManager, DATA_DIR, SCRIPT_DIR
 from espar_client import EsparClient
 from telnet_reader import get_espar_stream
 from wknn import load_radio_map, save_radio_map
-
-def get_int_input(prompt: str, default: int | None = None, min_val: int | None = None) -> int:
-    while True:
-        try:
-            val = input(prompt).strip()
-            if not val:
-                if default is not None:
-                    return default
-                print("  [!] Wartość nie może być pusta. Spróbuj ponownie.")
-                continue
-            res = int(val)
-            if min_val is not None and res < min_val:
-                print(f"  [!] Wartość musi być większa bądź równa {min_val}. Spróbuj ponownie.")
-                continue
-            return res
-        except ValueError:
-            print("  [!] Nieprawidłowa liczba całkowita. Spróbuj ponownie.")
-        except KeyboardInterrupt:
-            print("\n  [!] Anulowano.")
-            raise
-
-def get_float_input(prompt: str, default: float | None = None, min_val: float | None = None) -> float:
-    while True:
-        try:
-            val = input(prompt).strip()
-            if not val:
-                if default is not None:
-                    return default
-                print("  [!] Wartość nie może być pusta. Spróbuj ponownie.")
-                continue
-            val = val.replace(",", ".")
-            res = float(val)
-            if min_val is not None and res <= min_val:
-                print(f"  [!] Wartość musi być większa niż {min_val}. Spróbuj ponownie.")
-                continue
-            return res
-        except ValueError:
-            print("  [!] Nieprawidłowa liczba. Spróbuj ponownie.")
-        except KeyboardInterrupt:
-            print("\n  [!] Anulowano.")
-            raise
-
-def get_choice_input(prompt: str, valid_choices: list[str] | tuple[str, ...], default: str | None = None) -> str:
-    valid_choices = [c.strip().lower() for c in valid_choices]
-    while True:
-        val = input(prompt).strip().lower()
-        if not val:
-            if default is not None:
-                return default
-            print("  [!] Wybór nie może być pusty. Spróbuj ponownie.")
-            continue
-        if val in valid_choices:
-            return val
-        print(f"  [!] Nieprawidłowy wybór. Dozwolone opcje: {', '.join(valid_choices)}")
+from utils import get_int_input, get_float_input, get_choice_input
+from config import VALID_CHARS, DEFAULT_TARGET_PACKETS, DEFAULT_BEACON_ID
 
 class Calibrator:
     """Moduł do zbierania danych kalibracyjnych (fingerprinting)."""
     
-    VALID_CHARS = {31, 62, 124, 248, 496, 992, 1984, 3968, 3841, 3587, 3079, 2063}
-    TARGET_PACKETS = 100
+    VALID_CHARS = VALID_CHARS
+    TARGET_PACKETS = DEFAULT_TARGET_PACKETS
     
     def __init__(self, session_manager: SessionManager, client: EsparClient):
         self.session_manager = session_manager
@@ -89,15 +34,10 @@ class Calibrator:
         except Exception:
             pass
 
-        import sys
-        import os
-        import json
-        import subprocess
-
         viewer = os.path.join(self.session_manager.script_dir, "map_viewer.py")
         
         if not beacons_list:
-            beacons_list = [{"id": 28, "x": 0.0, "y": 0.0}]
+            beacons_list = [{"id": DEFAULT_BEACON_ID, "x": 0.0, "y": 0.0}]
 
         beacons_json = json.dumps(beacons_list)
 
@@ -134,8 +74,8 @@ class Calibrator:
         print("\n  [Skanowanie] Szukanie aktywnych beaconów w zasięgu (2 sekundy)...")
         sock = self.client.connect_and_start()
         if not sock:
-            print("  [!] Nie udało się połączyć w celu skanowania. Używam domyślnego Beacon ID: 28.")
-            return [28]
+            print("  [!] Nie udało się połączyć w celu skanowania.")
+            return []
         
         detected = set()
         start_time = time.time()
@@ -154,8 +94,7 @@ class Calibrator:
             
         detected_list = sorted(list(detected))
         if not detected_list:
-            print("  [!] Nie wykryto żadnych beaconów. Używam domyślnego Beacon ID: 28.")
-            return [28]
+            print("  [!] Nie wykryto żadnych beaconów.")
         return detected_list
 
     # ── Konfiguracja zestawu beaconów ─────────────────────────
@@ -172,47 +111,72 @@ class Calibrator:
 
         # Skanowanie aktywnych beaconów w otoczeniu
         available = self._scan_available_beacons()
-        print("\n  Wykryte beacony w zasięgu:")
-        for idx, bid in enumerate(available, 1):
-            print(f"    {idx} - Beacon ID {bid}")
-
-        print(f"\n  Wybierz {n} beaconów z listy powyżej.")
-        print(f"  Formaty: '1,2,3' lub '1-3' lub Enter = pierwsze {n}")
-        
-        while True:
-            ids_raw = input("  Wybór: ").strip()
-            try:
-                if not ids_raw:
-                    # Auto-select first N beacons
-                    selected_indices = list(range(1, n + 1))
-                elif "-" in ids_raw and "," not in ids_raw:
-                    # Range format: "1-3"
-                    parts = ids_raw.split("-")
-                    start_idx = int(parts[0].strip())
-                    end_idx = int(parts[1].strip())
-                    selected_indices = list(range(start_idx, end_idx + 1))
-                else:
-                    # Comma format: "1,2,3"
-                    selected_indices = [int(x.strip()) for x in ids_raw.split(",")]
-
-                if len(selected_indices) != n:
-                    print(f"  [!] Podano {len(selected_indices)} pozycji zamiast {n}. Spróbuj ponownie.")
-                    continue
-                
-                beacon_ids = []
-                valid_selection = True
-                for idx in selected_indices:
-                    if 1 <= idx <= len(available):
-                        beacon_ids.append(available[idx - 1])
+        if not available:
+            print(f"\n  [!] Brak wykrytych beaconów. Wpisz {n} ID beaconów ręcznie (np. '28,33' lub '28'):")
+            while True:
+                ids_raw = input("  ID beaconów: ").strip()
+                try:
+                    if "," in ids_raw:
+                        beacon_ids = [int(x.strip()) for x in ids_raw.split(",")]
+                    elif "-" in ids_raw:
+                        parts = ids_raw.split("-")
+                        start_id = int(parts[0].strip())
+                        end_id = int(parts[1].strip())
+                        beacon_ids = list(range(start_id, end_id + 1))
+                    elif ids_raw:
+                        beacon_ids = [int(ids_raw.strip())]
                     else:
-                        print(f"  [!] Numer {idx} poza zakresem [1-{len(available)}].")
-                        valid_selection = False
-                        break
-                if not valid_selection:
-                    continue
-                break
-            except (ValueError, IndexError):
-                print("  [!] Nieprawidłowy format. Użyj '1,2,3' lub '1-3'. Spróbuj ponownie.")
+                        print("  [!] Wpisz przynajmniej jedno ID.")
+                        continue
+                    
+                    if len(beacon_ids) != n:
+                        print(f"  [!] Podano {len(beacon_ids)} ID zamiast {n}. Spróbuj ponownie.")
+                        continue
+                    break
+                except ValueError:
+                    print("  [!] Nieprawidłowy format. Podaj liczby całkowite.")
+        else:
+            print("\n  Wykryte beacony w zasięgu:")
+            for idx, bid in enumerate(available, 1):
+                print(f"    {idx} - Beacon ID {bid}")
+
+            print(f"\n  Wybierz {n} beaconów z listy powyżej.")
+            print(f"  Formaty: '1,2,3' lub '1-3' lub Enter = pierwsze {n}")
+            
+            while True:
+                ids_raw = input("  Wybór: ").strip()
+                try:
+                    if not ids_raw:
+                        # Auto-select first N beacons
+                        selected_indices = list(range(1, n + 1))
+                    elif "-" in ids_raw and "," not in ids_raw:
+                        # Range format: "1-3"
+                        parts = ids_raw.split("-")
+                        start_idx = int(parts[0].strip())
+                        end_idx = int(parts[1].strip())
+                        selected_indices = list(range(start_idx, end_idx + 1))
+                    else:
+                        # Comma format: "1,2,3"
+                        selected_indices = [int(x.strip()) for x in ids_raw.split(",")]
+
+                    if len(selected_indices) != n:
+                        print(f"  [!] Podano {len(selected_indices)} pozycji zamiast {n}. Spróbuj ponownie.")
+                        continue
+                    
+                    beacon_ids = []
+                    valid_selection = True
+                    for idx in selected_indices:
+                        if 1 <= idx <= len(available):
+                            beacon_ids.append(available[idx - 1])
+                        else:
+                            print(f"  [!] Numer {idx} poza zakresem [1-{len(available)}].")
+                            valid_selection = False
+                            break
+                    if not valid_selection:
+                        continue
+                    break
+                except (ValueError, IndexError):
+                    print("  [!] Nieprawidłowy format. Użyj '1,2,3' lub '1-3'. Spróbuj ponownie.")
 
         spacing = get_float_input("  Odstęp między kolejnymi beaconami [m]: ", min_val=0.0)
 
@@ -403,14 +367,17 @@ class Calibrator:
         beacon_id = 28
         if not tripod:
             available = self._scan_available_beacons()
-            print("\n  Wykryte beacony w zasięgu:")
-            for idx, bid in enumerate(available, 1):
-                print(f"    {idx} - Beacon ID {bid}")
-            choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
-            if available and 1 <= choice_idx <= len(available):
-                beacon_id = available[choice_idx - 1]
+            if not available:
+                beacon_id = get_int_input("  Podaj ID beacona do kalibracji ręcznie (domyślnie 28): ", default=28, min_val=1)
             else:
-                beacon_id = available[0] if available else 28
+                print("\n  Wykryte beacony w zasięgu:")
+                for idx, bid in enumerate(available, 1):
+                    print(f"    {idx} - Beacon ID {bid}")
+                choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
+                if 1 <= choice_idx <= len(available):
+                    beacon_id = available[choice_idx - 1]
+                else:
+                    beacon_id = available[0]
         else:
             beacon_id = tripod["beacon_ids"][0]
 
@@ -488,14 +455,17 @@ class Calibrator:
             beacon_id = tripod["beacon_ids"][0]
         else:
             available = self._scan_available_beacons()
-            print("\n  Wykryte beacony w zasięgu:")
-            for idx, bid in enumerate(available, 1):
-                print(f"    {idx} - Beacon ID {bid}")
-            choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
-            if available and 1 <= choice_idx <= len(available):
-                beacon_id = available[choice_idx - 1]
+            if not available:
+                beacon_id = get_int_input("  Podaj ID beacona do kalibracji (podglądu radaru) ręcznie (domyślnie 28): ", default=28, min_val=1)
             else:
-                beacon_id = available[0] if available else 28
+                print("\n  Wykryte beacony w zasięgu:")
+                for idx, bid in enumerate(available, 1):
+                    print(f"    {idx} - Beacon ID {bid}")
+                choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
+                if 1 <= choice_idx <= len(available):
+                    beacon_id = available[choice_idx - 1]
+                else:
+                    beacon_id = available[0]
             print(f"  Podgląd radaru: Beacon {beacon_id} (dane zbierane ze wszystkich)")
 
         # ── Konfiguracja czasu / liczby pakietów ──
@@ -820,7 +790,7 @@ class Calibrator:
             from wknn import load_radio_map
             existing = load_radio_map()
             print(f"  Mapa radiowa: {len(existing)} punktów łącznie po kalibracji")
-        except:
+        except Exception:
             pass
         print(f"{'═' * 56}")
 
@@ -934,15 +904,18 @@ class Calibrator:
 
         # Wybór beacon ID (dla pojedynczego beacona)
         available = self._scan_available_beacons()
-        print("\n  Wykryte beacony w zasięgu:")
-        for idx, bid in enumerate(available, 1):
-            print(f"    {idx} - Beacon ID {bid}")
-        choice_idx = get_int_input(f"  Wybierz beacon do zbierania (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
         beacon_id = 28
-        if available and 1 <= choice_idx <= len(available):
-            beacon_id = available[choice_idx - 1]
+        if not available:
+            beacon_id = get_int_input("  Podaj ID beacona do zbierania ręcznie (domyślnie 28): ", default=28, min_val=1)
         else:
-            beacon_id = available[0] if available else 28
+            print("\n  Wykryte beacony w zasięgu:")
+            for idx, bid in enumerate(available, 1):
+                print(f"    {idx} - Beacon ID {bid}")
+            choice_idx = get_int_input(f"  Wybierz beacon do zbierania (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
+            if 1 <= choice_idx <= len(available):
+                beacon_id = available[choice_idx - 1]
+            else:
+                beacon_id = available[0]
 
         # Wybór czasu / pakietów
         target_packets = get_int_input("  Liczba pakietów na beacon (domyślnie 100): ", default=100, min_val=1)

@@ -32,39 +32,59 @@ import os
 import subprocess
 import sys
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR   = os.path.normpath(os.path.join(SCRIPT_DIR, '..', 'data'))
+from config import SCRIPT_DIR, DATA_DIR, OPTIMAL_K_PATH, get_test_set_path
 sys.path.insert(0, SCRIPT_DIR)
 
 # Wymuszamy backend Agg (bez Qt/Wayland)
 import matplotlib
 matplotlib.use('Agg')
 
-from wknn import load_radio_map, wknn_estimate, DISTANCE_METRIC
-
-TEST_SET_PATH   = os.path.join(DATA_DIR, 'test_set.json')
-OPTIMAL_K_PATH  = os.path.join(DATA_DIR, 'optimal_k.json')
+from wknn import load_radio_map, wknn_estimate
+import wknn
 
 
 # ══════════════════════════════════════════════════════════════════════════
 # I/O zbioru testowego
 # ══════════════════════════════════════════════════════════════════════════
 
-def load_test_set() -> list:
+def load_test_set(filter_session: bool = False, path: str = None) -> list:
     """Wczytuje zbiór testowy z test_set.json."""
-    if not os.path.exists(TEST_SET_PATH):
+    if path is None:
+        path = get_test_set_path()
+    if not os.path.exists(path):
         return []
     try:
-        with open(TEST_SET_PATH, encoding='utf-8') as f:
-            return json.load(f)
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
     except (json.JSONDecodeError, ValueError):
         return []
+    if not isinstance(data, list):
+        return []
+
+    if filter_session and os.path.basename(path) == "test_set.json":
+        from config import SESSION_PATH
+        if os.path.exists(SESSION_PATH):
+            try:
+                with open(SESSION_PATH, encoding='utf-8') as f:
+                    s = json.load(f)
+                sess = ""
+                if "origin_label" in s:
+                    sess = s["origin_label"]
+                elif "active_session" in s and isinstance(s["active_session"], dict):
+                    sess = s["active_session"].get("origin_label", "")
+                if sess and sess != 'unknown':
+                    data = [e for e in data if e.get("_local", {}).get("session") == sess]
+            except Exception:
+                pass
+    return data
 
 
-def save_test_set(test_set: list) -> None:
+def save_test_set(test_set: list, path: str = None) -> None:
     """Zapisuje zbiór testowy do test_set.json."""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(TEST_SET_PATH, 'w', encoding='utf-8') as f:
+    if path is None:
+        path = get_test_set_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(test_set, f, indent=2, ensure_ascii=False)
 
 
@@ -82,12 +102,15 @@ def avg_to_window_data(beacons_avg: dict, beacon_id: int) -> dict:
 
     Każde avg_rssi jest owijane w jednoelementową listę — symuluje "okno"
     z jednej próbki (odpowiada idealnemu, bezszumowemu odczytowi).
+
+    Filtruje wartości -95.0 (kary/braki), aby odzwierciedlić zachowanie trybu live,
+    w którym brakujące kierunki nie są przekazywane w oknie czasowym.
     """
     b_str = str(beacon_id)
     avg   = beacons_avg.get(b_str, {}).get('avg', {})
     if not avg:
         return {}
-    window = {ch: [rssi] for ch, rssi in avg.items()}
+    window = {ch: [rssi] for ch, rssi in avg.items() if float(rssi) != -95.0}
     return {beacon_id: window}
 
 
@@ -144,7 +167,7 @@ def _show_plot(fig, out_path: str) -> None:
     except Exception:
         pass
 
-def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
+def _plot_cdf(results: list, stats: dict, k: int, beacon_id: int) -> str:
     """Generuje wykres CDF i zapisuje do pliku. Zwraca ścieżkę."""
     try:
         import matplotlib.pyplot as plt
@@ -153,14 +176,25 @@ def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
         print('[!] matplotlib niedostępny — pomijam wykres CDF.')
         return ''
 
-    s = sorted(errors)
-    n = len(s)
+    s_res = sorted(results, key=lambda r: r['error_m'])
+    errors_sorted = [r['error_m'] for r in s_res]
+    n = len(errors_sorted)
     cdf = [(i + 1) / n for i in range(n)]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(s, cdf, color='#3b82f6', linewidth=2, marker='o',
-            markersize=4, markerfacecolor='white', markeredgewidth=1.5,
+    ax.plot(errors_sorted, cdf, color='#3b82f6', linewidth=2, marker='o',
+            markersize=5, markerfacecolor='white', markeredgewidth=1.5,
             label=f'CDF (n={n})')
+
+    # Podpisz każdy punkt na wykresie CDF jego nazwą z bazy testowej
+    for i, r in enumerate(s_res):
+        err = r['error_m']
+        y_val = cdf[i]
+        label = r['label']
+        # Naprzemienne umieszczanie etykiet lekko wyżej/niżej dla lepszej czytelności
+        offset_y = 0.025 if i % 2 == 0 else -0.045
+        ax.text(err + 0.05, y_val + offset_y, label, fontsize=8, color='#475569',
+                ha='left', va='center', bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
 
     # Linie percentylowe
     for p_val, p_lbl, color in [
@@ -178,7 +212,7 @@ def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
     ax.set_ylabel('CDF', fontsize=12)
     ax.set_title(
         f'CDF błędu lokalizacji ESPAR WkNN\n'
-        f'K={k} | metryka={DISTANCE_METRIC} | beacon={beacon_id} | '
+        f'K={k} | metryka={wknn.DISTANCE_METRIC} | beacon={beacon_id} | '
         f'Mean={stats["mean"]:.3f} m | RMSE={stats["rmse"]:.3f} m',
         fontsize=11,
     )
@@ -195,7 +229,7 @@ def _plot_cdf(errors: list, stats: dict, k: int, beacon_id: int) -> str:
 
 
 def _plot_scatter(results: list, stats: dict) -> str:
-    """Generuje scatter plot: prawdziwe vs estymowane pozycje."""
+    """Generuje scatter plot: prawdziwe vs estymowane pozycje z nazwami punktów."""
     try:
         import matplotlib.pyplot as plt
         from matplotlib.patches import FancyArrowPatch
@@ -207,6 +241,7 @@ def _plot_scatter(results: list, stats: dict) -> str:
     for r in results:
         xt, yt = r['x_true'], r['y_true']
         xe, ye = r['x_est'],  r['y_est']
+        label = r.get('label', '')
         # Strzałka: prawdziwy → estymowany
         ax.annotate('', xy=(xe, ye), xytext=(xt, yt),
                     arrowprops=dict(arrowstyle='->', color='#94a3b8',
@@ -214,6 +249,10 @@ def _plot_scatter(results: list, stats: dict) -> str:
         ax.plot(xt, yt, 'o', color='#3b82f6', markersize=7, zorder=5)
         ax.plot(xe, ye, 's', color='#ef4444', markersize=7, zorder=5,
                 alpha=0.8)
+        # Podpisz punkt (prawdziwy) na wykresie
+        ax.text(xt, yt + 0.08, label, fontsize=8, color='#1e293b', fontweight='bold',
+                ha='center', va='bottom', zorder=10,
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
 
     # Legenda
     from matplotlib.lines import Line2D
@@ -258,6 +297,20 @@ def load_optimal_k(default: int = 3) -> int:
     return default
 
 
+def load_optimal_beacon_id(default: int = 28) -> int:
+    """
+    Wczytuje ID beacona z optimal_k.json (wyznaczone przez optimize_k()).
+    Zwraca wartość domyślną, jeśli plik nie istnieje lub nie można go odczytać.
+    """
+    if os.path.exists(OPTIMAL_K_PATH):
+        try:
+            with open(OPTIMAL_K_PATH, encoding='utf-8') as f:
+                return int(json.load(f).get('beacon_id', default))
+        except Exception:
+            pass
+    return default
+
+
 def _plot_k_optimization(k_values: list, k_stats: dict, best_k: int) -> str:
     """
     Generuje wykres K vs. błąd lokalizacji (Mean, RMSE, P90).
@@ -292,7 +345,7 @@ def _plot_k_optimization(k_values: list, k_stats: dict, best_k: int) -> str:
     ax.set_ylabel('Błąd lokalizacji  [m]', fontsize=12)
     ax.set_title(
         f'Optymalizacja parametru K — WkNN ESPAR\n'
-        f'metryka={DISTANCE_METRIC} | n_test={k_stats[k_values[0]]["n"]} punktów',
+        f'metryka={wknn.DISTANCE_METRIC} | n_test={k_stats[k_values[0]]["n"]} punktów',
         fontsize=11,
     )
     ax.set_xticks(k_values)
@@ -320,8 +373,8 @@ def optimize_k(beacon_id: int = 28, k_max: int = 11) -> int:
     Returns:
         Optymalne K.
     """
-    test_set  = load_test_set()
-    radio_map = load_radio_map()
+    test_set  = load_test_set(filter_session=True)
+    radio_map = load_radio_map(filter_session=True)
 
     if not test_set:
         print('[!] Brak zbioru testowego. Zbierz punkty (opcja 6 w menu).')
@@ -339,7 +392,7 @@ def optimize_k(beacon_id: int = 28, k_max: int = 11) -> int:
     print(f'  Zbiór testowy: {len(test_set)} punktów')
     print(f'  Radio map:      {len(radio_map)} punktów')
     print(f'  Zakres K:       1 – {k_max_real}')
-    print(f'  Metryka:        {DISTANCE_METRIC}\n')
+    print(f'  Metryka:        {wknn.DISTANCE_METRIC}\n')
     print(f'  {"K":>3}  {"Mean":>8}  {"RMSE":>8}  {"P90":>8}  {"N":>4}')
     print('  ' + '-' * 36)
 
@@ -374,8 +427,13 @@ def optimize_k(beacon_id: int = 28, k_max: int = 11) -> int:
         print('[!] Brak wyników.')
         return load_optimal_k()
 
-    # Optymalne K = min RMSE
-    best_k = min(k_stats, key=lambda k: k_stats[k]['rmse'])
+    # Optymalne K = min RMSE (wymagamy K >= 3, aby umożliwić rzeczywistą interpolację WkNN i zapobiec snappingowi)
+    candidates = [k for k in k_stats.keys() if k >= 3]
+    if not candidates:
+        candidates = [k for k in k_stats.keys() if k >= 2]
+    if not candidates:
+        candidates = list(k_stats.keys())
+    best_k = min(candidates, key=lambda k: k_stats[k]['rmse'])
 
     print('  ' + '-' * 36)
     print(f'\n  Optymalne K = {best_k}  '
@@ -388,7 +446,7 @@ def optimize_k(beacon_id: int = 28, k_max: int = 11) -> int:
         json.dump({
             'k':          best_k,
             'beacon_id':  beacon_id,
-            'metric':     DISTANCE_METRIC,
+            'metric':     wknn.DISTANCE_METRIC,
             'n_test':     len(test_set),
             'n_radio_map': len(radio_map),
             'k_stats':    {str(k): v for k, v in k_stats.items()},
@@ -429,11 +487,11 @@ def run_validation(k: int | None = None, beacon_id: int = 28) -> None:
     if k is None:
         k = load_optimal_k(default=3)
         print(f'  [auto] Użwam K={k} (z optimal_k.json)')
-    test_set  = load_test_set()
-    radio_map = load_radio_map()
+    test_set  = load_test_set(filter_session=True)
+    radio_map = load_radio_map(filter_session=True)
 
     if not test_set:
-        print(f'[!] Brak danych testowych w {TEST_SET_PATH}')
+        print(f'[!] Brak danych testowych w {get_test_set_path()}')
         print('    Zbierz punkty testowe (opcja 7 w menu) i uruchom ponownie.')
         return
 
@@ -445,7 +503,7 @@ def run_validation(k: int | None = None, beacon_id: int = 28) -> None:
     print(f'  Zbiór testowy:        {len(test_set)} punktów')
     print(f'  Mapa radiowa:         {len(radio_map)} punktów')
     print(f'  K sąsiadów:           {k}')
-    print(f'  Metryka odległości:   {DISTANCE_METRIC}')
+    print(f'  Metryka odległości:   {wknn.DISTANCE_METRIC}')
     print(f'  Beacon ID:            {beacon_id}')
     print()
 
@@ -511,7 +569,7 @@ def run_validation(k: int | None = None, beacon_id: int = 28) -> None:
     # ── Zapis wyników JSON ────────────────────────────────────────────────
     report = {
         'config': {'k': k, 'beacon_id': beacon_id,
-                   'metric': DISTANCE_METRIC,
+                   'metric': wknn.DISTANCE_METRIC,
                    'n_test': len(test_set), 'n_radio_map': len(radio_map)},
         'stats':   stats,
         'results': results,
@@ -527,7 +585,7 @@ def run_validation(k: int | None = None, beacon_id: int = 28) -> None:
         if not ans:
             ans = 'n'
         if ans in ('t', 'y', 'yes', 'tak'):
-            p1 = _plot_cdf(errors, stats, k, beacon_id)
+            p1 = _plot_cdf(results, stats, k, beacon_id)
             p2 = _plot_scatter(results, stats)
             if p1:
                 print(f'  CDF:     {p1}')
