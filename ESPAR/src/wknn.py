@@ -94,21 +94,12 @@ def load_radio_map(path: str = None, filter_session: bool = False) -> list:
         
     entries = [entry for entry in data if isinstance(entry, dict) and "beacons" in entry]
     
+    # Filtrowanie po aktywnej sesji (tylko dla pliku radio_map.json — sesyjne pliki mają już odfiltrowane dane)
     if filter_session and os.path.basename(path) == "radio_map.json":
-        from config import SESSION_PATH
-        if os.path.exists(SESSION_PATH):
-            try:
-                with open(SESSION_PATH, encoding='utf-8') as f:
-                    s = json.load(f)
-                sess = ""
-                if "origin_label" in s:
-                    sess = s["origin_label"]
-                elif "active_session" in s and isinstance(s["active_session"], dict):
-                    sess = s["active_session"].get("origin_label", "")
-                if sess and sess != 'unknown':
-                    entries = [e for e in entries if e.get("_local", {}).get("session") == sess]
-            except Exception:
-                pass
+        from config import get_active_session_label
+        sess = get_active_session_label()
+        if sess and sess != 'unknown':
+            entries = [e for e in entries if e.get("_local", {}).get("session") == sess]
                 
     return entries
 
@@ -190,20 +181,22 @@ def _pearson_distance(v1: list, v2: list) -> float:
 
 def _euclidean_distance(v1: list, v2: list) -> float:
     """
-    Odległość euklidesowa między wektorami RSS.
+    Odległość euklidesowa między wektorami RSS z wycentrowaniem do zera (mean-centering).
 
-    Wzór (6) z artykułu "Calibration-Free Single-Anchor Indoor Localization
-    Using an ESPAR Antenna", Sensors 2021, 21, 3431:
-        D_j = sqrt( Σ (RSS_live_i − RSS_fp_i)² )
+    Wzór z wycentrowaniem poziomu sygnału (zero-mean Euclidean distance):
+        D_j = sqrt( Σ ((RSS_live_i - mean(RSS_live)) − (RSS_fp_i - mean(RSS_fp)))² )
 
     Zakres: [0, +∞), mniejsze = lepiej.
 
-    Uwaga: metryka jest wrażliwa na bezwzględny poziom RSS. Jeśli beacon
-    jest bliżej lub dalej niż podczas kalibracji, cały wektor jest
-    przesunięty i odległość rośnie nawet przy poprawnym kierunku.
-    Zalecana normalizacja min-max wektorów przed porównaniem.
+    Wycentrowanie eliminuje niekorzystny wpływ bezwzględnego poziomu sygnału (path-loss / moc beacona),
+    skupiając się na profilu kierunkowym anteny ESPAR i dynamice zmian między kierunkami.
     """
-    return math.sqrt(sum((a - b) ** 2 for a, b in zip(v1, v2)))
+    n1, n2 = len(v1), len(v2)
+    if n1 == 0 or n2 == 0:
+        return 0.0
+    m1 = sum(v1) / n1
+    m2 = sum(v2) / n2
+    return math.sqrt(sum(((a - m1) - (b - m2)) ** 2 for a, b in zip(v1, v2)))
 
 
 # ════════════════════════════════════════════════════════════════════════════

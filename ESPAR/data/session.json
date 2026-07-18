@@ -3,14 +3,20 @@
     "origin_label": "espar37_final",
     "origin_x_m": 22.87,
     "origin_y_m": 8.748,
-    "created": "2026-07-03T16:56:15"
+    "created": "2026-07-17T21:39:50"
   },
   "history": {
     "espar37_final": {
       "origin_label": "espar37_final",
       "origin_x_m": 22.87,
       "origin_y_m": 8.748,
-      "created": "2026-07-03T16:56:15"
+      "created": "2026-07-17T21:39:50"
+    },
+    "707dziala": {
+      "origin_label": "707dziala",
+      "origin_x_m": 22.87,
+      "origin_y_m": 8.748,
+      "created": "2026-07-17T21:25:50"
     }
   }
 }

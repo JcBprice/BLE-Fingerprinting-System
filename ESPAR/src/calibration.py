@@ -97,6 +97,31 @@ class Calibrator:
             print("  [!] Nie wykryto żadnych beaconów.")
         return detected_list
 
+    def _choose_single_beacon(self, prompt: str = "kalibracji") -> int:
+        """Skanuje otoczenie i pozwala wybrać jednego beacona z listy.
+
+        Jeśli skanowanie nie wykryje żadnego beacona, pyta o ręczne wpisanie ID.
+        Zwraca wybrany ID beacona.
+        """
+        available = self._scan_available_beacons()
+        if not available:
+            return get_int_input(
+                f"  Podaj ID beacona do {prompt} ręcznie (domyślnie 28): ",
+                default=28, min_val=1
+            )
+
+        print(f"\n  Wykryte beacony w zasięgu:")
+        for idx, bid in enumerate(available, 1):
+            print(f"    {idx} - Beacon ID {bid}")
+
+        choice_idx = get_int_input(
+            f"  Wybierz beacon do {prompt} (wpisz numer 1-{len(available)}, domyślnie 1): ",
+            default=1, min_val=1
+        )
+        if 1 <= choice_idx <= len(available):
+            return available[choice_idx - 1]
+        return available[0]
+
     # ── Konfiguracja zestawu beaconów ─────────────────────────
 
     def _ask_tripod_params(self) -> dict | None:
@@ -363,21 +388,9 @@ class Calibrator:
             print(f"\n  Lokalne:  X={x_local:.2f} m, Y={y_local:.2f} m")
             print(f"  Globalne: X={x_global:.2f} m, Y={y_global:.2f} m")
 
-        # Wybór beacon ID (dla pojedynczego beacona)
-        beacon_id = 28
+        # Wybór beacon ID
         if not tripod:
-            available = self._scan_available_beacons()
-            if not available:
-                beacon_id = get_int_input("  Podaj ID beacona do kalibracji ręcznie (domyślnie 28): ", default=28, min_val=1)
-            else:
-                print("\n  Wykryte beacony w zasięgu:")
-                for idx, bid in enumerate(available, 1):
-                    print(f"    {idx} - Beacon ID {bid}")
-                choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
-                if 1 <= choice_idx <= len(available):
-                    beacon_id = available[choice_idx - 1]
-                else:
-                    beacon_id = available[0]
+            beacon_id = self._choose_single_beacon("kalibracji")
         else:
             beacon_id = tripod["beacon_ids"][0]
 
@@ -454,18 +467,7 @@ class Calibrator:
         if tripod:
             beacon_id = tripod["beacon_ids"][0]
         else:
-            available = self._scan_available_beacons()
-            if not available:
-                beacon_id = get_int_input("  Podaj ID beacona do kalibracji (podglądu radaru) ręcznie (domyślnie 28): ", default=28, min_val=1)
-            else:
-                print("\n  Wykryte beacony w zasięgu:")
-                for idx, bid in enumerate(available, 1):
-                    print(f"    {idx} - Beacon ID {bid}")
-                choice_idx = get_int_input(f"  Wybierz beacon do kalibracji (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
-                if 1 <= choice_idx <= len(available):
-                    beacon_id = available[choice_idx - 1]
-                else:
-                    beacon_id = available[0]
+            beacon_id = self._choose_single_beacon("kalibracji (podglądu radaru)")
             print(f"  Podgląd radaru: Beacon {beacon_id} (dane zbierane ze wszystkich)")
 
         # ── Konfiguracja czasu / liczby pakietów ──
@@ -902,20 +904,8 @@ class Calibrator:
         print(f"\n  Lokalne:  X={x_local} m, Y={y_local} m")
         print(f"  Globalne: X={x_global} m, Y={y_global} m")
 
-        # Wybór beacon ID (dla pojedynczego beacona)
-        available = self._scan_available_beacons()
-        beacon_id = 28
-        if not available:
-            beacon_id = get_int_input("  Podaj ID beacona do zbierania ręcznie (domyślnie 28): ", default=28, min_val=1)
-        else:
-            print("\n  Wykryte beacony w zasięgu:")
-            for idx, bid in enumerate(available, 1):
-                print(f"    {idx} - Beacon ID {bid}")
-            choice_idx = get_int_input(f"  Wybierz beacon do zbierania (wpisz numer 1-{len(available)}, domyślnie 1): ", default=1, min_val=1)
-            if 1 <= choice_idx <= len(available):
-                beacon_id = available[choice_idx - 1]
-            else:
-                beacon_id = available[0]
+        # Wybór beacon ID
+        beacon_id = self._choose_single_beacon("zbierania")
 
         # Wybór czasu / pakietów
         target_packets = get_int_input("  Liczba pakietów na beacon (domyślnie 100): ", default=100, min_val=1)

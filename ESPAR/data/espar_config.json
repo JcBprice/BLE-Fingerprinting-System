@@ -1,5 +1,5 @@
 {
-  "port": 8894,
+  "port": 8895,
   "host": "153.19.49.102",
-  "metric": "pearson"
+  "metric": "euclidean"
 }

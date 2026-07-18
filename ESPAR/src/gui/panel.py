@@ -65,6 +65,25 @@ class InfoPanel(QFrame):
         self._lbl_id.setStyleSheet(f'color: {C_DOT.name()};')
         lay.addWidget(self._lbl_id)
 
+        lay.addSpacing(4)
+        lay.addWidget(self._sub_label('Beacon ID:'))
+        lay.addSpacing(2)
+        self._spin_beacon_id = QSpinBox()
+        self._spin_beacon_id.setRange(1, 1000)
+        self._spin_beacon_id.setValue(28)
+        self._spin_beacon_id.setStyleSheet(f"""
+            QSpinBox {{
+                background: {C_PANEL2.name()};
+                color: {C_TEXT.name()};
+                border: 1px solid {C_BORDER.name()};
+                border-radius: 4px;
+                padding: 4px;
+                font-family: 'Segoe UI';
+                font-size: 11px;
+            }}
+        """)
+        lay.addWidget(self._spin_beacon_id)
+
         lay.addSpacing(18)
         lay.addWidget(self._divider())
 

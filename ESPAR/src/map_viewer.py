@@ -94,9 +94,16 @@ if __name__ == '__main__':
             win.show()
             sys.exit(app.exec())
 
-        # --select-points : graficzny wybór wielu punktów
+        # --select-points [beacon_id] : graficzny wybór wielu punktów
         if '--select-points' in sys.argv:
-            win = MapWindow(select_mode=True)
+            idx = sys.argv.index('--select-points')
+            beacon_id = DEFAULT_BEACON_ID
+            if idx + 1 < len(sys.argv):
+                try:
+                    beacon_id = int(sys.argv[idx + 1])
+                except ValueError:
+                    pass
+            win = MapWindow(select_mode=True, live_beacon_id=beacon_id)
             win.show()
             sys.exit(app.exec())
 

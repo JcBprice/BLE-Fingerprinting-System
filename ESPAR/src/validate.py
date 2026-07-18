@@ -62,20 +62,10 @@ def load_test_set(filter_session: bool = False, path: str = None) -> list:
         return []
 
     if filter_session and os.path.basename(path) == "test_set.json":
-        from config import SESSION_PATH
-        if os.path.exists(SESSION_PATH):
-            try:
-                with open(SESSION_PATH, encoding='utf-8') as f:
-                    s = json.load(f)
-                sess = ""
-                if "origin_label" in s:
-                    sess = s["origin_label"]
-                elif "active_session" in s and isinstance(s["active_session"], dict):
-                    sess = s["active_session"].get("origin_label", "")
-                if sess and sess != 'unknown':
-                    data = [e for e in data if e.get("_local", {}).get("session") == sess]
-            except Exception:
-                pass
+        from config import get_active_session_label
+        sess = get_active_session_label()
+        if sess and sess != 'unknown':
+            data = [e for e in data if e.get("_local", {}).get("session") == sess]
     return data
 
 
@@ -150,22 +140,7 @@ def compute_stats(errors: list) -> dict:
 # Wizualizacja
 # ══════════════════════════════════════════════════════════════════════════
 
-def _show_plot(fig, out_path: str) -> None:
-    """Zapisuje wykres, zamyka figurę i otwiera PNG w systemowej przeglądarce."""
-    fig.savefig(out_path, dpi=150, bbox_inches='tight')
-    import matplotlib.pyplot as plt
-    plt.close(fig)
-    try:
-        env = dict(os.environ)
-        env["QT_LOGGING_RULES"] = "qt.*=false"
-        subprocess.Popen(['xdg-open', out_path],
-                         stdin=subprocess.DEVNULL,
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL,
-                         start_new_session=True,
-                         env=env)
-    except Exception:
-        pass
+from utils import show_plot
 
 def _plot_cdf(results: list, stats: dict, k: int, beacon_id: int) -> str:
     """Generuje wykres CDF i zapisuje do pliku. Zwraca ścieżkę."""
@@ -224,7 +199,7 @@ def _plot_cdf(results: list, stats: dict, k: int, beacon_id: int) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'validation_cdf.png')
-    _show_plot(fig, out_path)
+    show_plot(fig, out_path)
     return out_path
 
 
@@ -275,7 +250,7 @@ def _plot_scatter(results: list, stats: dict) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'validation_scatter.png')
-    _show_plot(fig, out_path)
+    show_plot(fig, out_path)
     return out_path
 
 
@@ -354,7 +329,7 @@ def _plot_k_optimization(k_values: list, k_stats: dict, best_k: int) -> str:
     fig.tight_layout()
 
     out_path = os.path.join(DATA_DIR, 'k_optimization.png')
-    _show_plot(fig, out_path)
+    show_plot(fig, out_path)
     return out_path
 
 

@@ -96,27 +96,7 @@ def _stats(values: list) -> tuple[float, float, float, float]:
 # Wizualizacja
 # ══════════════════════════════════════════════════════════════════════════
 
-def _show_plot(fig, out_path: str) -> None:
-    """Zapisuje wykres do PNG, zamyka figurę i otwiera plik w przeglądarce.
-
-    Unika problemu z backendem Qt/Wayland — matplotlib plt.show() uruchamia
-    pętlę zdarzeń Qt, która crashuje proces na Wayland przy zamykaniu okna.
-    xdg-open działa w osobnym procesie i nie wpływa na nasz program.
-    """
-    fig.savefig(out_path, dpi=150, bbox_inches='tight')
-    import matplotlib.pyplot as plt
-    plt.close(fig)
-    try:
-        env = dict(os.environ)
-        env["QT_LOGGING_RULES"] = "qt.*=false"
-        subprocess.Popen(['xdg-open', out_path],
-                         stdin=subprocess.DEVNULL,
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL,
-                         start_new_session=True,
-                         env=env)
-    except Exception:
-        pass  # brak xdg-open — plik i tak zapisany
+from utils import show_plot
 
 # Paleta kolorow dla kolejnych migawek (porownanie)
 _PALETTE = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6']
@@ -137,6 +117,8 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
         print('[!] matplotlib/numpy niedostępny.')
         return ''
 
+    plt.close('all')
+
     # Kąty i konfiguracje
     deg_to_char = {deg: ch for ch, deg in CHAR_TO_DEG.items()}
     sorted_degs = sorted(deg_to_char.keys())  # 0, 30, 60, ..., 330
@@ -156,11 +138,10 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
 
     # Przygotuj dane do wykresu: list of (label, {char_int_str: avg_rssi})
     plot_data = []
-    beacon_id = None
+    bids = sorted(list(set(snap.get('beacon_id') for snap in snapshots if snap.get('beacon_id') is not None)))
+    bids_str = ', '.join(map(str, bids)) if bids else 'nieznany'
     for snap in snapshots:
         label = snap.get('label', 'migawka')
-        if beacon_id is None:
-            beacon_id = snap.get('beacon_id', 28)
         data = snap.get('data', {})
         snap_avgs = {}
         for ch, vals in data.items():
@@ -175,10 +156,10 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
     if n_selected == 0:
         return ''
 
-    if n_selected <= 4:
-        # Pojedyncze porównanie lub pojedynczy punkt — radar overlay
+    if n_selected <= 1:
+        # Pojedynczy punkt — radar overlay
         fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={'projection': 'polar'})
-        ax.set_theta_zero_location('N')   # 0° na górze
+        ax.set_theta_zero_location('N', offset=0)   # 0° na górze, obrócone o 226.77° w prawo
         ax.set_theta_direction(-1)         # zgodnie z ruchem wskazówek zegara
 
         radar_plots_data = []
@@ -205,16 +186,18 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
         ax.set_xticks(angles_rad)
         ax.set_xticklabels([f'{d}°' for d in sorted_degs], fontsize=9)
         ax.set_ylabel('RSSI [dBm]', fontsize=9, labelpad=20)
-        ax.set_title(f'Odciski radiowe (radar) — Beacon {beacon_id}\n'
+        ax.set_title(f'Odciski radiowe (radar) — Beacon(s) {bids_str}\n'
                      f'(Linia przerywana = szacowany kierunek beacona)',
                      fontsize=12, pad=20)
         
         # Rysuj strzałki kierunku beacona
         r_min, r_max = ax.get_ylim()
         if r_max > r_min:
+            r_range = r_max - r_min
             for best_rad, best_deg, color in radar_plots_data:
                 ax.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
-                ax.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
+                arrow_text_r = r_max - 0.1 * r_range
+                ax.annotate('', xy=(best_rad, r_max), xytext=(best_rad, arrow_text_r),
                             arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=15))
 
         ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=9)
@@ -246,7 +229,7 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
         ax_heat.set_yticklabels(labels_list, fontsize=8)
         ax_heat.set_xlabel('Kąt wiązki anteny ESPAR')
         ax_heat.set_ylabel('Punkt kalibracyjny')
-        ax_heat.set_title(f'Mapa RSSI [dBm] — Beacon {beacon_id}', fontsize=11)
+        ax_heat.set_title(f'Mapa RSSI [dBm] — Beacon(s) {bids_str}', fontsize=11)
         cbar = fig.colorbar(im, ax=ax_heat, shrink=0.8)
         cbar.set_label('RSSI [dBm]', fontsize=9)
 
@@ -261,7 +244,7 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
 
         # Panel prawy: radar wybranych (max 4, co kwartał)
         ax_radar = fig.add_subplot(122, projection='polar')
-        ax_radar.set_theta_zero_location('N')
+        ax_radar.set_theta_zero_location('N', offset=0)
         ax_radar.set_theta_direction(-1)
 
         # Wybierz max 4 równomiernie rozłożone
@@ -296,9 +279,11 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
         # Rysuj strzałki kierunku beacona
         r_min, r_max = ax_radar.get_ylim()
         if r_max > r_min:
+            r_range = r_max - r_min
             for best_rad, best_deg, color in radar_plots_data:
                 ax_radar.plot([best_rad, best_rad], [r_min, r_max], color=color, linestyle='--', linewidth=1.5, alpha=0.7)
-                ax_radar.annotate('', xy=(best_rad, r_max), xytext=(best_rad, r_max - 5),
+                arrow_text_r = r_max - 0.1 * r_range
+                ax_radar.annotate('', xy=(best_rad, r_max), xytext=(best_rad, arrow_text_r),
                                   arrowprops=dict(arrowstyle="->", color=color, lw=2.5, mutation_scale=12))
 
         ax_radar.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=8)
@@ -308,10 +293,11 @@ def plot_radar_charts(snapshots: list[dict], out_path: str | None = None) -> str
 
     if out_path is None:
         labels   = '_vs_'.join(s['label'] for s in snapshots)
-        out_path = os.path.join(SNAPSHOTS_DIR, f'{labels}_radar.png')
+        ts       = datetime.now().strftime('%Y%m%d_%H%M%S')
+        out_path = os.path.join(SNAPSHOTS_DIR, f'{labels}_{ts}_radar.png')
     
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-    _show_plot(fig, out_path)
+    show_plot(fig, out_path)
     return out_path
 
 
@@ -540,24 +526,41 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
         return
 
     # ── Przygotowanie listy wpisów (entries) ─────────────────────────────
-    entries: list[tuple[str, str, dict]] = []  # (typ, label, data)
+    entries: list[tuple[str, str, any, any, any, int]] = []  # (typ, label, data, x, y, beacon_id)
 
     if radio_points:
         for pt in radio_points:
             label = pt.get('label', '')
-            b_data = pt.get('beacons', {}).get(str(beacon_id), {})
-            avg = b_data.get('avg', {})
-            entries.append(('mapa', label, avg))
+            b_dict = pt.get('beacons', {})
+            if b_dict:
+                # Find the first available beacon in the point's beacons dict
+                bid_key = list(b_dict.keys())[0]
+                b_data = b_dict[bid_key]
+                avg = b_data.get('avg', {})
+                try:
+                    bid_val = int(bid_key)
+                except ValueError:
+                    bid_val = 28
+                entries.append(('mapa', label, avg, pt.get('x_m', '?'), pt.get('y_m', '?'), bid_val))
 
     if snapshots:
         for p in snapshots:
-            fname = os.path.basename(p)
-            entries.append(('migawka', fname, p))
+            try:
+                snap = load_snapshot(p)
+                fname = os.path.basename(p)
+                bid_val = snap.get('beacon_id', 28)
+                entries.append(('migawka', fname, p, None, None, bid_val))
+            except Exception:
+                pass
+
+    if not entries:
+        print(f'\n  [!] Brak danych do analizy.')
+        return
 
     # ── Wybór sposobu wyboru punktów ─────────────────────────────────────
     print('\n=== ANALIZA ODCISKÓW RADIOWYCH (offline) ===')
     print('  Wybierz sposób doboru punktów do analizy:')
-    print('    1 - Wybór graficzny z mapy (klikaj myszką)')
+    print('    1 - Wybór graficzny z mapy (max 4 punkty na wykresie radarowym)')
     print('    2 - Wybór tekstowy z listy (konsola)')
     while True:
         choice = input('  Wybór [1/2, domyślnie 1] -> ').strip()
@@ -574,6 +577,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
         print("  a następnie kliknij zielony przycisk 'Zatwierdź wybór'.")
         try:
             import subprocess
+            # Pass all points to select-points; no filtering by beacon_id in GUI
             res = subprocess.run([sys.executable, viewer, "--select-points"], capture_output=True, text=True, check=False)
             selected_labels = []
             for line in res.stdout.splitlines():
@@ -599,20 +603,22 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
             choice = '2'
 
     if choice == '2':
-        if radio_points:
-            print(f'\n  Punkty z mapy radiowej ({len(radio_points)}):')
+        map_entries_count = sum(1 for e in entries if e[0] == 'mapa')
+        if map_entries_count > 0:
+            print(f'\n  Punkty z mapy radiowej ({map_entries_count}):')
             for i, entry in enumerate(entries):
                 if entry[0] == 'mapa':
-                    pt = radio_points[i]
-                    x = pt.get('x_m', '?')
-                    y = pt.get('y_m', '?')
-                    print(f'    {i+1:>3}. {entry[1]:<16} ({x} m, {y} m)')
+                    x = entry[3]
+                    y = entry[4]
+                    bid = entry[5]
+                    print(f'    {i+1:>3}. {entry[1]:<16} ({x} m, {y} m) [Beacon #{bid}]')
 
-        snap_start = len(radio_points)
-        if snapshots:
-            print(f'\n  Migawki RSSI ({len(snapshots)}):')
+        snap_start = map_entries_count
+        if len(entries) > snap_start:
+            print(f'\n  Migawki RSSI ({len(entries) - snap_start}):')
             for i in range(snap_start, len(entries)):
-                print(f'    {i+1:>3}. {entries[i][1]}')
+                bid = entries[i][5]
+                print(f'    {i+1:>3}. {entries[i][1]} [Beacon #{bid}]')
 
         while True:
             print(f'\n  Wpisz numery punktów do porównania (np. "1 5 12") lub Enter = pierwszy:')
@@ -650,7 +656,7 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
     plot_data: list[tuple[str, dict]] = []  # (label, {char_int_str: avg_rssi})
 
     for idx in selected_idx:
-        typ, label, data = entries[idx]
+        typ, label, data = entries[idx][:3]
         if typ == 'mapa':
             # data = {str(char_int): avg_rssi}
             plot_data.append((label, data))
@@ -692,15 +698,17 @@ def run_rssi_offline(beacon_id: int = 28) -> None:
         print(row)
 
     # ── Wygeneruj wykresy radarowe ────────────────────────────────────────
-    out_path = os.path.join(SNAPSHOTS_DIR, 'analiza_odciskow.png')
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    out_path = os.path.join(SNAPSHOTS_DIR, f'analiza_odciskow_{ts}.png')
     
     selected_snaps = []
     for idx in selected_idx:
-        typ, label, data = entries[idx]
+        entry = entries[idx]
+        typ, label, data = entry[0], entry[1], entry[2]
         if typ == 'mapa':
             selected_snaps.append({
                 'label': label,
-                'beacon_id': beacon_id,
+                'beacon_id': entry[5],
                 'data': data
             })
         elif typ == 'migawka':

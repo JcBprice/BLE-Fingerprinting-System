@@ -4,8 +4,11 @@ utils.py — Funkcje pomocnicze systemu lokalizacji ESPAR.
 Zawiera:
     - Funkcje bezpiecznego wczytywania danych od użytkownika (int, float, wybór)
     - Wspólna logika skanowania beaconów i budowania listy kandydatów
+    - Wspólna funkcja show_plot() do zapisu i wyświetlania wykresów
 """
 
+import os
+import subprocess
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Funkcje bezpiecznego wczytywania danych od użytkownika
@@ -114,15 +117,12 @@ def build_beacon_candidates(available: list[int],
                             db_beacons: list[int]) -> list[int]:
     """Buduje unikatową listę kandydatów (z otoczenia i bazy danych).
 
-    Beacony wykryte w otoczeniu są umieszczane na początku listy,
-    następnie beacony obecne w bazie, które nie zostały wykryte.
-
     Args:
         available:  Lista ID beaconów wykrytych w zasięgu.
         db_beacons: Lista ID beaconów obecnych w bazie danych.
 
     Returns:
-        Posortowana lista unikalnych ID beaconów (wykryte mają priorytet).
+        Lista unikalnych ID beaconów.
     """
     candidates = []
     for b in available:
@@ -131,6 +131,7 @@ def build_beacon_candidates(available: list[int],
     for b in db_beacons:
         if b not in candidates:
             candidates.append(b)
+
     if not candidates:
         candidates = [28]
     return candidates
@@ -189,3 +190,30 @@ def get_beacons_from_radio_map() -> list[int]:
         return sorted(beacons)
     except Exception:
         return []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Wyświetlanie wykresów (wspólne dla validate.py i rssi_analysis.py)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def show_plot(fig, out_path: str) -> None:
+    """Zapisuje wykres matplotlib do PNG, zamyka figurę i otwiera plik w przeglądarce.
+
+    Używa xdg-open (Linux) uruchamianego jako osobny proces — dzięki temu
+    unikamy problemów z backendem Qt/Wayland (matplotlib plt.show() crashuje
+    na Wayland przy zamykaniu okna).
+    """
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    import matplotlib.pyplot as plt
+    plt.close(fig)
+    try:
+        env = dict(os.environ)
+        env["QT_LOGGING_RULES"] = "qt.*=false"
+        subprocess.Popen(['xdg-open', out_path],
+                         stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL,
+                         start_new_session=True,
+                         env=env)
+    except Exception:
+        pass  # brak xdg-open — plik i tak zapisany na dysku

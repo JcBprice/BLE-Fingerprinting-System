@@ -32,8 +32,29 @@ from telnet_reader import get_espar_stream
 from config import OPTIMAL_K_PATH, PORT_NAMES
 from utils import (
     get_beacons_from_radio_map, build_beacon_candidates,
-    select_beacon_interactive, select_beacon_interactive as select_beacon_id
+    select_beacon_interactive
 )
+
+
+def _select_beacon(calibrator, purpose: str, scan: bool = True) -> int:
+    """Pomocnik: pobiera beacony z bazy, opcjonalnie skanuje aktywne, i pyta użytkownika.
+
+    Args:
+        calibrator: instancja Calibrator (potrzebna do skanowania)
+        purpose: opis celu (wyświetlany w promptach, np. 'podglądu')
+        scan: czy skanować aktywne beacony (False = tryb offline)
+    Returns:
+        wybrany beacon_id
+    """
+    db_beacons = get_beacons_from_radio_map()
+    available = []
+    if scan:
+        try:
+            available = calibrator._scan_available_beacons()
+        except Exception as e:
+            print(f"  [!] Błąd skanowania: {e}")
+    candidates = build_beacon_candidates(available, db_beacons) if scan else db_beacons
+    return select_beacon_interactive(candidates, db_beacons, available, purpose)
 
 
 def main():
@@ -77,6 +98,7 @@ def main():
             print("  ---- Konfiguracja --------------------------------------")
             print("  8 - Zmiana portu anteny ESPAR (aktualnie: " + f"{antenna_info})")
             print("  9 - Zmiana metryki odległości (aktualnie: " + f"{wknn.DISTANCE_METRIC})")
+            print(" 10 - Detekcja najsilniejszej anteny ESPAR (porównanie RSSI)")
             print("  ---------------------------------------------------------")
             print("  0 - Wyjscie")
 
@@ -102,19 +124,7 @@ def main():
                         print("  [!] Nieprawidłowy wybór. Wpisz 'p' lub 's' (lub wciśnij Enter aby powrócić).")
             elif choice == "3":
                 viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
-                
-                db_beacons = get_beacons_from_radio_map()
-                try:
-                    available = calibrator._scan_available_beacons()
-                except Exception as e:
-                    print(f"  [!] Błąd skanowania: {e}")
-                    available = []
-                
-                all_candidates = build_beacon_candidates(available, db_beacons)
-                selected_beacon = select_beacon_interactive(
-                    all_candidates, db_beacons, available, "podglądu"
-                )
-                
+                selected_beacon = _select_beacon(calibrator, "podglądu")
                 print(f"Otwieram mape z punktami kalibracyjnymi dla Beacona #{selected_beacon}...")
                 try:
                     subprocess.run([sys.executable, viewer, "--view", str(selected_beacon)], check=False)
@@ -124,19 +134,17 @@ def main():
                 print("\n  Analiza RSSI:")
                 print("    1 - Analiza istniejacych danych  (z mapy / migawek, offline)")
                 print("    2 - Nowy pomiar na zywo          (wymaga polaczenia z serwerem)")
+                print("    3 - Detekcja najsilniejszej anteny ESPAR (porownanie RSSI)")
                 while True:
-                    sub = input("  Wybierz [1/2] (lub Enter aby powrócić): ").strip()
+                    sub = input("  Wybierz [1/2/3] (lub Enter aby powrócić): ").strip()
                     if not sub:
                         break
-                    if sub == "2":
-                        db_beacons = get_beacons_from_radio_map()
-                        try:
-                            available = calibrator._scan_available_beacons()
-                        except Exception as e:
-                            print(f"  [!] Błąd skanowania: {e}")
-                            available = []
-                        all_candidates = build_beacon_candidates(available, db_beacons)
-                        bid = select_beacon_interactive(all_candidates, db_beacons, available, "analizy RSSI")
+                    if sub == "3":
+                        from room_detector import run_room_detection
+                        run_room_detection()
+                        break
+                    elif sub == "2":
+                        bid = _select_beacon(calibrator, "analizy RSSI")
 
                         from rssi_analysis import run_rssi_analysis
                         run_rssi_analysis(
@@ -153,14 +161,14 @@ def main():
                         if not db_beacons:
                             print("  [!] Brak beaconów w bazie odcisków.")
                             break
-                        # Analiza offline — nie skanujemy aktywnych urządzeń
-                        bid = select_beacon_interactive(db_beacons, db_beacons, [], "analizy RSSI offline")
+                        # Automatycznie wybierz beacon_id (z pliku optimal_k.json lub pierwszego z bazy) bez pytań
+                        bid = load_optimal_beacon_id(default=db_beacons[0])
 
                         from rssi_analysis import run_rssi_offline
                         run_rssi_offline(beacon_id=bid)
                         break
                     else:
-                        print("  [!] Nieprawidłowy wybór. Wpisz '1' lub '2' (lub wciśnij Enter aby powrócić).")
+                        print("  [!] Nieprawidłowy wybór. Wpisz '1', '2' lub '3' (lub wciśnij Enter aby powrócić).")
             elif choice == "5":
                 print("\n  Zbieranie punktów testowych:")
                 print("    g - Tryb graficzny (zaznaczanie na mapie, zalecane)")
@@ -170,17 +178,7 @@ def main():
                     if not sub:
                         break
                     if sub == "g":
-                        db_beacons = get_beacons_from_radio_map()
-                        try:
-                            available = calibrator._scan_available_beacons()
-                        except Exception as e:
-                            print(f"  [!] Błąd skanowania: {e}")
-                            available = []
-                        
-                        all_candidates = build_beacon_candidates(available, db_beacons)
-                        selected_beacon = select_beacon_interactive(
-                            all_candidates, db_beacons, available, "zbierania punktów testowych"
-                        )
+                        selected_beacon = _select_beacon(calibrator, "zbierania punktów testowych")
 
                         print(f"\nOtwieram tryb graficznego zbierania dla Beacona #{selected_beacon}...")
                         viewer = os.path.join(SCRIPT_DIR, "map_viewer.py")
@@ -278,11 +276,14 @@ def main():
                         break
                     else:
                         print("  [!] Nieprawidłowy wybór. Wpisz '1' lub '2' (lub wciśnij Enter aby powrócić).")
+            elif choice == "10":
+                from room_detector import run_room_detection
+                run_room_detection()
             elif choice == "0":
                 print("Do widzenia.")
                 break
             else:
-                print("Nieprawidlowy wybor. Wpisz 0-9.")
+                print("Nieprawidlowy wybor. Wpisz 0-10.")
 
         except KeyboardInterrupt:
             print("\n")

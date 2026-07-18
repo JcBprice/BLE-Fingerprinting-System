@@ -12,8 +12,8 @@ Pola w polu "d" (rozdzielone przecinkami):
     [3] char-tyka ESPAR      – np. 62 → dziesiętna reprezentacja 12-bitowego wektora
                                          sterującego anteną (62d = 0b000000111110).
                                          Bit 0 = pręt nr 1, bit 11 = pręt nr 12.
-                                         Aktywne (=1) pręty stają się dyrektorami,
-                                         nieaktywne (=0) stają się reflektorami.
+                                         Aktywne (=1) pręty stają się directorami,
+                                         nieaktywne (=0) stają się reflectorami.
     [4] kanał BLE            – np. 37 → kanał advertising (37, 38 lub 39)
     [5] numer porządkowy     – np. 12604 → sekwencyjny numer ramki z beacona
     [6] GPS latitude         – 0.0 jeśli beacon nie ma odbiornika GPS
@@ -22,6 +22,8 @@ Pola w polu "d" (rozdzielone przecinkami):
 """
 
 import json
+
+from config import VALID_CHARS
 
 
 def parse_beacon_data(json_line: str) -> dict | None:
@@ -71,14 +73,10 @@ def parse_beacon_data(json_line: str) -> dict | None:
         except ValueError:
             return None  # uszkodzone pola numeryczne
 
-        # Filtruj anomalne/uszkodzone wartości RSSI (np. szum pomiarowy powyżej -10 lub poniżej -110 dBm)
-        rssi_dbm = -1 * rssi_abs
-        if rssi_dbm > -10 or rssi_dbm < -110:
-            return None
 
-        # Filtruj psujące/anomalne konfiguracje anteny:
-        # Charakterystyka musi należeć do 12 poprawnych kierunków (VALID_CHARS)
-        from config import VALID_CHARS
+        rssi_dbm = -1 * rssi_abs
+
+        # Filtruj nieprawidłowe konfiguracje anteny (musi być jeden z 12 kierunków)
         if char_val not in VALID_CHARS:
             return None
 

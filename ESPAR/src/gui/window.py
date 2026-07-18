@@ -313,6 +313,11 @@ class MapWindow(QMainWindow):
             self._panel._chk_beacons.toggled.connect(self._on_toggle_beacons)
             self._panel._chk_live.toggled.connect(self._on_toggle_live)
             self._panel._spin_window.valueChanged.connect(self._on_window_sec_changed)
+            if hasattr(self._panel, '_spin_beacon_id'):
+                self._panel._spin_beacon_id.blockSignals(True)
+                self._panel._spin_beacon_id.setValue(self._live_beacon_id)
+                self._panel._spin_beacon_id.blockSignals(False)
+                self._panel._spin_beacon_id.valueChanged.connect(self._on_beacon_id_changed)
 
     # ── Handlery i metody zdarzeń ─────────────────────────────────────────────
 
@@ -892,6 +897,12 @@ class MapWindow(QMainWindow):
         self._live_window_sec = float(val)
         if self._live_thread is not None:
             self._live_thread.WINDOW_SEC = float(val)
+
+    def _on_beacon_id_changed(self, val: int):
+        self._live_beacon_id = int(val)
+        if self._live_thread is not None:
+            self._live_thread.BEACON_ID = int(val)
+        self._sb.showMessage(f'Zmieniono śledzony Beacon na #{val}')
 
     def _stop_live(self):
         if self._live_thread is None:
