@@ -1,0 +1,62 @@
+[
+  {
+    "beacon_id": 1,
+    "label": "drzwi_701",
+    "x_m": 38.8495,
+    "y_m": 8.0759
+  },
+  {
+    "beacon_id": 3,
+    "label": "drzwi_703",
+    "x_m": 35.2974,
+    "y_m": 8.0664
+  },
+  {
+    "beacon_id": 4,
+    "label": "drzwi_704",
+    "x_m": 38.9379,
+    "y_m": 5.7254
+  },
+  {
+    "beacon_id": 5,
+    "label": "drzwi_705",
+    "x_m": 31.6512,
+    "y_m": 8.1622
+  },
+  {
+    "beacon_id": 6,
+    "label": "drzwi_706",
+    "x_m": 35.3535,
+    "y_m": 5.8373
+  },
+  {
+    "beacon_id": 7,
+    "label": "drzwi_707",
+    "x_m": 28.0982,
+    "y_m": 8.0768
+  },
+  {
+    "beacon_id": 8,
+    "label": "drzwi_708",
+    "x_m": 31.7225,
+    "y_m": 5.7614
+  },
+  {
+    "beacon_id": 9,
+    "label": "drzwi_709",
+    "x_m": 24.5537,
+    "y_m": 8.2068
+  },
+  {
+    "beacon_id": 10,
+    "label": "drzwi_710",
+    "x_m": 28.101,
+    "y_m": 5.9047
+  },
+  {
+    "beacon_id": 12,
+    "label": "drzwi_712",
+    "x_m": 24.5347,
+    "y_m": 5.8525
+  }
+]

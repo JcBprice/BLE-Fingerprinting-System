@@ -1,5 +1,11 @@
 {
-  "port": 8895,
+  "port": 8894,
   "host": "153.19.49.102",
-  "metric": "euclidean"
+  "metric": "pearson",
+  "antennas": {
+    "8893": "espar07",
+    "8894": "espar37",
+    "8895": "espar35",
+    "8896": "espar34"
+  }
 }

@@ -1,6 +1,16 @@
+﻿# Środowisko wirtualne i IDE obecne w projekcie
 .venv/
-**/__pycache__/
-*.pyc
-.DS_Store
 .idea/
-.vscode/
+
+# Pamięć podręczna Pythona (tworzy się automatycznie przy uruchamianiu kodu)
+__pycache__/
+*.pyc
+
+# Wygenerowane wykresy i analizy graficzne
+ESPAR/data/*.png
+ESPAR/data/rssi_snapshots/*.png
+
+# Pliki tymczasowe, notatki i logi
+*.log
+*.tmp
+task.md
